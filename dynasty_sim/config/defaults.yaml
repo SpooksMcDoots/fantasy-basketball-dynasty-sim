@@ -1,0 +1,100 @@
+# Trait order defines array layout everywhere. h2 and inbreeding_dep from the
+# Consolidated Parameter Table. dep_direction: +1 means inbreeding depression
+# RAISES the raw value (lane agility is measured in seconds, lower is better).
+traits:
+  height:      {h2: 0.80, inbreeding_dep: 2.7, dep_direction: -1}
+  ape:         {h2: 0.70, inbreeding_dep: 1.0, dep_direction: -1}
+  vertical:    {h2: 0.55, inbreeding_dep: 1.5, dep_direction: -1}
+  agility:     {h2: 0.50, inbreeding_dep: 1.5, dep_direction: 1}
+  endurance:   {h2: 0.50, inbreeding_dep: 1.5, dep_direction: -1}
+  strength:    {h2: 0.55, inbreeding_dep: 1.5, dep_direction: -1}
+  hand:        {h2: 0.70, inbreeding_dep: 1.0, dep_direction: -1}
+  touch:       {h2: 0.40, inbreeding_dep: 1.5, dep_direction: -1}
+  vision:      {h2: 0.45, inbreeding_dep: 2.4, dep_direction: -1}
+  learning:    {h2: 0.47, inbreeding_dep: 2.4, dep_direction: -1}
+  injury_res:  {h2: 0.30, inbreeding_dep: 3.0, dep_direction: -1}
+  temperament: {h2: 0.40, inbreeding_dep: 1.0, dep_direction: -1}
+
+genetics:
+  n_eff: 6                     # effective loci for hybrid (Castle-Wright) variance; spec default 12, allowed range 6-30 (see M8 notes)
+  heterosis_coef: 0.15         # SD per unit D, endurance + injury_res, F1
+  outbreeding_dep_coef: 0.2    # SD per unit D*H, F2+, same traits
+  hybrid_fert_k: 2.0           # fert = exp(-k * D * H)
+  # DESIGN OVERRIDE (not biology): extra "developmental instability" noise on F1
+  # traits, SD = f1_instability_coef * D. Real F1s are usually NOT more variable
+  # than their parents. Set to 0 to disable.
+  f1_instability_exempt: [height, strength]   # skeletal size stays canalised, so F2 > F1 there (acceptance c)
+  f1_instability_coef: 0.7 
+  fertility_penalty_per_F: 1.0     # fert *= max(0, 1 - k*F); 0 = realistic (no human deficit)
+  child_mortality_per_F: 0.56      # excess pre-reproductive mortality = 0.56*F
+  # Stability counters to runaway selective breeding (spec 4.2). All act on real physiology, not rating caps.
+  mean_reversion: 0.95             # child A = rho * midparent + noise, noise variance rescaled so V_A stays h2
+  tradeoff_agility_per_height_sd: 0.3   # lateral speed: +0.3 SD slower per +1 SD height beyond tradeoff_height_z0
+  tradeoff_height_z0: 1.5
+  viability_coef: 0.02             # extra child mortality = coef * max(0, |z| - viability_z0)^2 on height and strength
+  viability_z0: 3.0
+
+demography:
+  K: {human: 300, goliath: 120, elf: 100}   # per-race carrying capacity (all living, incl. commoners)
+  fertility_zero_at: 1.5      # density factor = max(0, 1 - N/(this*K)); births stop at this multiple of K
+  seed_fill: 0.6               # initial population as a fraction of K
+  immigration_rate: 0.15       # commoner adults arrive at this fraction of (K - N) per year
+  p_cross_race: 0.08           # chance a marriage search ignores race
+  marriage_prob: 0.6           # yearly chance an eligible woman looks for a spouse
+  p_dynasty_match: 0.5        # house women look only among house men this often
+  n_candidates: 6
+  kin_avoid_prob: 0.7          # reject candidates with child F >= kin_F_threshold this often
+  kin_F_threshold: 0.0625
+  mate_choice_lambda: 0.6      # candidates are chosen with weight exp(lambda * athletic score): assortative pressure
+  child_mortality_base: 0.03   # + child_mortality_per_F * F
+  house_races: [human, human, human, human, human, human, goliath, elf]
+  house_founders: 12           # adults per house at year 0 (half women)
+
+league:
+  n_teams: 8
+  games: 120
+  roster_max: 13
+  roster_min: 10
+  house_cap: 4                 # max house members on the house's own team
+  coach_effect: 1.0            # scales how much a house head's own traits shape the team's coaching style (0 = none)
+  family_budget: 8.0           # cap on a house's family talent: sum over its players on the team of max(0, value - league median)
+  legacy_frac: 0.15            # family admission bar: top 15% of their own population (open draft is top 2.5%)
+  prospects_per_team: 4        # commoner prospects generated per team per year
+  # Design choice: Goliaths and Elves are rare talents in a Human-majority world (spec: Human-majority calibration
+  # league). Weighing prospects by cohort flow (K / lifespan) instead lets Goliaths crowd out everyone (see M6 notes).
+  prospect_race_share: {human: 0.75, goliath: 0.10, elf: 0.15}
+  house_selected: true         # house founders come from the pro-caliber tail (athletic dynasties)
+  playoff_teams: 4
+  series_length: 5
+  retire_center: 34.0          # age_eff at which retirement probability is 50%
+  retire_width: 1.5
+  replacement_pct: 0.10        # veterans below this league-ovr percentile retire much sooner
+  join_population_prob: 0.15   # retired commoner pros who join the mate pool. They are drawn from the selected tail, so this is an
+                               # inflow of elite genes: at 0.6 the population p99 of touch drifted +0.46 SD over a century, at 0 it decays
+  contract_years: [3, 5]       # rookie contract length range (years)
+  resign_years: [2, 4]
+  retain_limit: 1              # expiring non-family players a team may re-sign per year; the rest are re-drafted
+  family_retain: 1             # expiring own-house players a team may re-sign per year (right of first refusal)
+
+development:
+  ath_noise: 0.05              # SD per year, athletic traits
+  skill_k: 0.18                # fraction of the gap to the ceiling closed per year (x learning x window)
+  skill_noise: 0.08
+  skill_start_gap: 1.0         # SD below genetic z at age_eff 20
+  skill_gap_decay: 0.82        # gap shrinks by this factor per age_eff year older than 20
+  skill_ceiling_z: 0.0         # ceiling = genetic z + this (spec says +1.5; that would inflate the calibrated baseline)
+  skill_decline: 0.02          # SD per year after skill_decline_age_eff
+  skill_decline_age_eff: 33
+
+injury:
+  hazard_game: 0.0022          # per rostered player-game, any injury
+  hazard_min: 0.00050          # per minute played
+  res_slope: 0.35              # hazard *= exp(-res_slope * z_resilience)
+  height_slope: 0.5            # hazard *= exp(height_slope * max(0, z_height - height_z0))
+  height_z0: 2.0
+  missed_frac: 0.38            # share of injuries that cost at least one game
+  sev_median: 3.0              # games missed, among injuries that cost games
+  sev_sigma: 1.0
+  age_sev_slope: 0.03          # severity *= 1 + slope * (age_eff - 25), floored at 0.7
+  knee_mult: 1.6
+  type_weights: {ankle: 0.30, knee: 0.28, other: 0.42}

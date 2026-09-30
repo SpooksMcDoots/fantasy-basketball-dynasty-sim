@@ -1,0 +1,90 @@
+# Engine constants. Every base rate traces to a validation row (spec section 2.5);
+# slopes are INFERRED starting points to be tuned in M4 calibration.
+params:
+  # possession clock
+  pace_mean: 14.4        # seconds per play
+  pace_shape: 6.0        # gamma shape
+  pace_quick_w: 0.05     # quicker lineups shorten plays
+  pace_pref_w: 0.08
+  second_len: 6.0        # mean seconds for put-backs / restarts
+  pace_game_sd: 0.04     # per-game lognormal pace factor shared by both teams (correlates their scores)
+  shoot_game_sd: 0.10    # per-game logit shift on make probability shared by both teams (shooting conditions)
+  foul_game_sd: 0.15     # per-game lognormal multiplier on foul rates shared by both teams (officiating)
+  score_flow: 0.0        # score-state effect: make-logit shift of -flow*tanh(lead/15) for the offense (leaders ease off, trailers press)
+  ev_mid: 0.0            # league-wide shot-selection prior (EV points) added to mid-range
+  ev_three: 0.0          # ... and to threes
+  # diminishing returns: physical advantages saturate (x -> sat * tanh(x / sat)) instead of growing without bound
+  reach_sat: 20.0        # cm, on max-reach minus release (contests and blocks)
+  z_sat: 2.0             # SD, on quickness gaps, turnover pressure and rebound-composite gaps
+  # non-shooting fouls
+  nsf_base: 0.045
+  nsf_aggr: 0.6
+  bonus_at: 5.0
+  # turnovers
+  tov: 0.130
+  tov_slope: 0.35
+  tov_temper: 0.10
+  steal_share: 0.59
+  steal_slope: 0.4
+  # shot selection
+  usage_touch: 0.6
+  usage_vision: 0.4
+  usage_temper: 0.3
+  usage_sat: 1.2         # shot-share weight = exp(sat * tanh(x / sat)): even a great shooter cannot take every shot
+  tau: 0.12
+  # make probabilities
+  make_rim: 0.64
+  make_mid: 0.42
+  make_three: 0.365
+  ft: 0.784
+  beta_touch_rim: 0.25
+  beta_touch_mid: 0.45
+  beta_touch_three: 0.55
+  beta_touch_ft: 0.60
+  beta_c_rim: 1.10
+  beta_c_mid: 0.80
+  beta_c_three: 0.65
+  size_rim: 0.20         # per 10 cm of release height above the reference mean
+  size_clip: 1.0
+  # contest geometry
+  c_reach_rim: 0.12
+  c_reach_mid: 0.08
+  c_reach_three: 0.04
+  c_quick_rim: 0.8
+  c_quick_mid: 1.0
+  c_quick_three: 1.3
+  c_off_three: -0.5
+  # blocks and shooting fouls
+  blk_rim: 0.09
+  blk_mid: 0.03
+  blk_three: 0.01
+  blk_slope: 0.9         # per 10 cm
+  sf_rim: 0.17
+  sf_mid: 0.05
+  sf_three: 0.015
+  sf_str: 0.3
+  sf_quick: 0.3
+  # rebounds
+  orb: 0.255
+  orb_ft: 0.13
+  orb_slope: 0.55
+  orb_three: 0.25
+  reb_pick: 1.2
+  # assists
+  ast_rim: 0.55
+  ast_mid: 0.40
+  ast_three: 0.78
+  ast_vision: 0.35
+  ast_pick: 0.8
+  # home edge and clutch
+  home_make: 0.025
+  home_foul: 1.06
+  clutch: 0.10
+  # energy
+  energy_drain: 0.0035
+  drain_end: 0.15
+  bench_rec: 0.012
+  fat_factor: 0.055
+  fat_floor: 0.7
+  sub_energy: 0.72
+  sub_margin: 1.08

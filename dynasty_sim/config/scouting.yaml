@@ -1,0 +1,17 @@
+# Frozen output of dynasty_sim.league.scouting.fit_weights. Do not hand-edit.
+meta:
+  reference: f26bfa08f240801b
+  r2: 0.2928
+weights:
+  z_reach: 3.116819
+  z_vert: 0.223728
+  quick: 4.017427
+  str: 3.860382
+  touch: 4.439478
+  vision: 0.30466
+  temper: 0.67724
+  end: 0.486961
+  hand: 0.642278
+  wing: -0.551803
+  z_mass: 0.946494
+  z_reach_sq: 6.793207

@@ -1,0 +1,28 @@
+# Target ranges for a Human-majority calibration league (spec section 2.5).
+# [lo, hi]; null lo = one-sided ceiling. Metrics are means over seasons.
+metrics:
+  pace:            [96.0, 102.0]     # possessions per 48 min per team
+  ortg:            [108.0, 116.0]    # points per 100 possessions
+  ppg:             [108.0, 118.0]
+  efg:             [0.510, 0.555]
+  ts:              [0.560, 0.590]
+  tov_pct:         [12.0, 14.5]      # TOV / (FGA + .44 FTA + TOV), percent
+  orb_pct:         [22.0, 29.0]      # ORB / (ORB + opp DRB), percent
+  fta_fga:         [0.19, 0.26]
+  tpa_fga:         [0.33, 0.42]
+  tp_pct:          [0.34, 0.38]
+  ft_pct:          [0.75, 0.80]
+  ast:             [23.0, 30.0]      # per team per game
+  stl:             [7.0, 10.0]
+  blk:             [3.5, 6.0]
+  pf:              [18.0, 22.0]
+  home_margin:     [1.5, 3.5]
+  home_win:        [0.53, 0.60]
+  margin_sd_100:   [12.0, 15.0]      # SD of home-minus-away margin per 100 possessions
+  team_score_sd:   [10.0, 14.0]      # within-team game-to-game SD of points
+  best_mov:        [null, 13.0]      # best team's mean margin of victory, per season
+  win_sd_30:       [0.12, 0.20]      # SD of team win% across teams, in 30-game windows
+  # Plausibility of individual box scores (INFERRED from NBA norms; keeps stat lines and record books credible)
+  starter_mpg:     [28.0, 36.0]      # mean minutes of each team's five most-used players
+  top_scorer_ppg:  [26.0, 36.0]      # league's leading scorer, points per game (40+ games)
+  max_game_pts:    [45.0, 95.0]      # highest individual game in a 20-season league (extreme value: varies about +-10 by league)
