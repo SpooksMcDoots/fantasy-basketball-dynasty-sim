@@ -165,6 +165,8 @@ Each is recorded where it lives; the short list:
   pairing at nearly the same level.
 - **Validation clause** "Human-majority seasons inside the table" is read per table row (average at least 90%), since the
   table's own midpoints cannot all hold at once.
+- **Hybrid fertility** is milder than the spec default: `hybrid_fert_k` 1.0 (spec 2.0, allowed 1-3) and `p_cross_race` 0.15
+  (spec 0.08). At the spec values only 0.1% of people were hybrids; now about 0.7%, with F2 lines and the occasional star.
 - **Scoring realism:** shooting skill has diminishing returns (`touch_sat`), heavy usage costs efficiency (`usage_cost`),
   and free throws are drawn by strength (post play, saturating) and by handling on drives (`sf_drive`, twos only).
   Late in close games the defence fouls the worst free-throw shooter on the floor (`hack_p`, `hack_secs`, `hack_margin`).

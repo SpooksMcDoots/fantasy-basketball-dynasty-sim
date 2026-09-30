@@ -143,11 +143,11 @@ def test_hybrid_generation_and_ancestry():
     assert np.allclose(f1.ancestry, [.5, .5, 0]) and np.allclose(bc.ancestry, [.75, .25, 0])
 
 
-def test_hybrid_fertility_matches_spec():
+def test_hybrid_fertility_follows_the_configured_penalty():
     rng = np.random.default_rng(2)
     h, g, e = (make_founder(r, rng, P) for r in (HUMAN, GOLIATH, ELF))
-    assert conception_prob(h, g, 25, P) / conception_prob(h, h, 25, P) == pytest.approx(np.exp(-1.1), rel=1e-6)
-    assert conception_prob(e, g, 60, P) / conception_prob(e, e, 60, P) == pytest.approx(np.exp(-1.5), rel=1e-6)
+    assert conception_prob(h, g, 25, P) / conception_prob(h, h, 25, P) == pytest.approx(np.exp(-P.hybrid_fert_k * 0.55), rel=1e-6)
+    assert conception_prob(e, g, 60, P) / conception_prob(e, e, 60, P) == pytest.approx(np.exp(-P.hybrid_fert_k * 0.75), rel=1e-6)
     assert conception_prob(h, h, 60, P) == 0.0           # outside fertile window
 
 

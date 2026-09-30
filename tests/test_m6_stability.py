@@ -69,10 +69,10 @@ def test_mate_choice_prefers_athletic_candidates_only_when_lambda_positive():
 def test_dynasty_pipeline_runs_and_children_inherit_selected_parents():
     pop = Population(P, RngTree(4))
     pop.seed()
+    founders = [p for p in pop.people.values() if p.mother_id is None and p.house_id is not None]      # before anyone marries in
     for _ in range(25):
         pop.step()
     kids = [p for p in pop.people.values() if p.mother_id is not None and p.house_id is not None]
-    founders = [p for p in pop.people.values() if p.mother_id is None and p.house_id is not None]
     assert len(kids) > 20 and len(founders) == P.demo["house_founders"] * 8
     from dynasty_sim.population.demography import _athletic_score
     # house lineages start from the pro-caliber tail, so their children beat an unselected baseline on average
