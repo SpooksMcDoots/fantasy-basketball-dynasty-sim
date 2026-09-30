@@ -95,11 +95,11 @@ def _rebound(off, base_logit, is_three, prm, rb, on, box, wk):
     p = _sig(base_logit + prm[EP.P_ORB_SLOPE] * zs * np.tanh((mo - md) / 5.0 / zs) - prm[EP.P_ORB_THREE] * is_three)
     if np.random.random() < p:
         for j in range(5):
-            wk[j] = np.exp(prm[EP.P_REB_PICK] * rb[off, j])
+            wk[j] = np.exp(prm[EP.P_REB_PICK] * prm[EP.P_REB_SAT] * np.tanh(rb[off, j] / prm[EP.P_REB_SAT]))
         box[off, on[off, _pick(wk, 5)], S.ST_ORB] += 1
         return True
     for j in range(5):
-        wk[j] = np.exp(prm[EP.P_REB_PICK] * rb[1 - off, j])
+        wk[j] = np.exp(prm[EP.P_REB_PICK] * prm[EP.P_REB_SAT] * np.tanh(rb[1 - off, j] / prm[EP.P_REB_SAT]))
     box[1 - off, on[1 - off, _pick(wk, 5)], S.ST_DRB] += 1
     return False
 

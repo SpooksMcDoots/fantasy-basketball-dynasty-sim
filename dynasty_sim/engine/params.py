@@ -20,7 +20,7 @@ YAML_NAMES = (
     "c_off_three",
     "blk_rim", "blk_mid", "blk_three", "blk_slope",
     "sf_rim", "sf_mid", "sf_three", "sf_str", "sf_quick",
-    "orb", "orb_ft", "orb_slope", "orb_three", "reb_pick",
+    "orb", "orb_ft", "orb_slope", "orb_three", "reb_pick", "reb_sat",
     "ast_rim", "ast_mid", "ast_three", "ast_vision", "ast_pick",
     "home_make", "home_foul", "clutch",
     "energy_drain", "drain_end", "bench_rec", "fat_factor", "fat_floor", "sub_energy", "sub_margin",

@@ -69,7 +69,8 @@ params:
   orb_ft: 0.13
   orb_slope: 0.55
   orb_three: 0.25
-  reb_pick: 1.2
+  reb_pick: 0.3          # who collects a rebound: weight = exp(reb_pick * reb_sat * tanh(rating / reb_sat))
+  reb_sat: 2.5           # rating at which extra size stops adding to a player's share of the rebounds
   # assists
   ast_rim: 0.55
   ast_mid: 0.40
