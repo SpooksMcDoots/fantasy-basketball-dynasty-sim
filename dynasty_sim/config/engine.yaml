@@ -54,6 +54,15 @@ params:
   c_quick_mid: 1.0
   c_quick_three: 1.3
   c_off_three: -0.5
+  # shooting skill has diminishing returns, and heavy usage costs efficiency (defences load up on a star)
+  touch_sat: 2.5         # SD at which extra shooting skill stops adding to make probability and free-throw %
+  usage_cost: 0.10       # make-logit cost per unit of shot share above an equal split (1.0 = 20% of the shots)
+  # foul drawing: strength (post play, contact) plus the shooter's own quickness and handling (drives)
+  sf_drive: 0.15         # shooting-foul logit per unit of handling rating, on rim and mid-range shots
+  # intentional fouling of poor free-throw shooters ("hack-a-Shaq"): late in a close game, when trailing
+  hack_p: 0.45           # foul the worst free-throw shooter on the floor when his make probability is below this
+  hack_secs: 300.0       # ... only in the last this many seconds of the fourth quarter / overtime
+  hack_margin: 12.0      # ... and only when the fouling team trails or is tied and within this many points
   # blocks and shooting fouls
   blk_rim: 0.09
   blk_mid: 0.03

@@ -19,7 +19,7 @@ YAML_NAMES = (
     "c_reach_rim", "c_reach_mid", "c_reach_three", "c_quick_rim", "c_quick_mid", "c_quick_three",
     "c_off_three",
     "blk_rim", "blk_mid", "blk_three", "blk_slope",
-    "sf_rim", "sf_mid", "sf_three", "sf_str", "sf_quick",
+    "sf_rim", "sf_mid", "sf_three", "sf_str", "sf_quick", "touch_sat", "usage_cost", "sf_drive", "hack_p", "hack_secs", "hack_margin",
     "orb", "orb_ft", "orb_slope", "orb_three", "reb_pick", "reb_sat",
     "ast_rim", "ast_mid", "ast_three", "ast_vision", "ast_pick",
     "home_make", "home_foul", "clutch",

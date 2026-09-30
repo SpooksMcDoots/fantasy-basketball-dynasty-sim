@@ -87,6 +87,7 @@ class Ledger:
         self.rivalry_top: dict[int, list] = {}
         self.names = NameBook(world.seed, lambda pid: world.pop.people.get(pid) or self.persons.get(pid))
         self.titles: dict[int, list] = {}                   # house -> [years]
+        self.player_titles: dict[int, int] = {}            # pid -> titles won as one of his team's three best players
         self._pop_ptr = 0
         self._value_hist: list = []
         self._mov_hist: list = []
@@ -244,6 +245,8 @@ class Ledger:
         last = max(self.titles.get(champ_house, [-999]))
         seen_before = year > DROUGHT_YEARS and (year - last > DROUGHT_YEARS or last == -999)
         self.titles.setdefault(champ_house, []).append(year)
+        for pid in core:
+            self.player_titles[pid] = self.player_titles.get(pid, 0) + 1
         self.log.add("title", year, tuple(core), (champ_house,), EV.MAJOR, "wins", float(res.wins[res.champion]),
                      team=res.champion)
         if seen_before:
@@ -347,11 +350,13 @@ class Ledger:
                 self._heads[hid] = (house.head_id, year) if house.head_id is not None else None
                 if self._heads[hid] is None:
                     del self._heads[hid]
-        for pid in self.hof.inductees_this_year(year, self.careers):
+        for pid in self.hof.inductees_this_year(year, self.careers, self.player_titles):
             c = self.careers[pid]
             c.hof_year = year
             c.awards.append((year, "Hall of Fame"))
-            self.log.add("hof", year, (pid,), (c.houses[-1],), EV.LANDMARK, "career_value", c.career_value())
+            self.log.add("hof", year, (pid,), (c.houses[-1],), EV.LANDMARK, "hof_score", self.hof.record[pid]["score"],
+                         career=self.hof.record[pid]["career"], peak=self.hof.record[pid]["peak"],
+                         honours=self.hof.record[pid]["honours"])
         for pid, hid, titles in self.hof.builders_this_year(year, ended):
             self.log.add("hof_builder", year, (pid,), (hid,), EV.LANDMARK, "titles", float(titles))
 

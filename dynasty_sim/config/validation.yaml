@@ -24,5 +24,6 @@ metrics:
   win_sd_30:       [0.12, 0.20]      # SD of team win% across teams, in 30-game windows
   # Plausibility of individual box scores (INFERRED from NBA norms; keeps stat lines and record books credible)
   starter_mpg:     [28.0, 36.0]      # mean minutes of each team's five most-used players
-  top_scorer_ppg:  [26.0, 36.0]      # league's leading scorer, points per game (40+ games)
+  top_scorer_ppg:  [26.0, 32.0]      # league's leading scorer, points per game (40+ games), mean over seasons
+  max_season_ppg:  [null, 39.0]      # the single best scoring season in a 20-season league (real: ~37 since 1980)
   max_game_pts:    [45.0, 95.0]      # highest individual game in a 20-season league (extreme value: varies about +-10 by league)

@@ -165,10 +165,17 @@ Each is recorded where it lives; the short list:
   pairing at nearly the same level.
 - **Validation clause** "Human-majority seasons inside the table" is read per table row (average at least 90%), since the
   table's own midpoints cannot all hold at once.
+- **Scoring realism:** shooting skill has diminishing returns (`touch_sat`), heavy usage costs efficiency (`usage_cost`),
+  and free throws are drawn by strength (post play, saturating) and by handling on drives (`sf_drive`, twos only).
+  Late in close games the defence fouls the worst free-throw shooter on the floor (`hack_p`, `hack_secs`, `hack_margin`).
+- **Hall of Fame** scores a retired career as the mean of three standardised parts: career value, best five seasons, and
+  honours (awards and titles). Longevity alone does not carry a player.
 - **Scouting** uses a value fitted to simulated winning contribution, not the engine's game rating.
 
 ## Known limits
 
+- Hall of Fame race mix follows the strength of each race's best players, so Goliaths and Elves are over-represented
+  relative to their share of eligible careers.
 - Title concentration (one house over 40% of titles in 30 seasons) still trips in about 5% of seeds.
 - The Elf effect on three-point rate is positive but only barely resolved statistically.
 - The validation table's strictest reading (every row inside in the same season) holds in only 30-40% of seasons.

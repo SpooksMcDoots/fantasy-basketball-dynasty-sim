@@ -128,7 +128,7 @@ def _player_metrics(BOX, ls: "LeagueSet") -> dict:
             if ok.any():
                 best = max(best, float((pts[ok] / played[ok]).max()))
         top.append(best)
-    return {"starter_mpg": float(starters), "top_scorer_ppg": float(np.mean(top)),
+    return {"starter_mpg": float(starters), "top_scorer_ppg": float(np.mean(top)), "max_season_ppg": float(np.max(top)),
             "max_game_pts": float(box[..., S.ST_PTS].max())}
 
 
@@ -162,7 +162,7 @@ _LOGIT = {"ft", "tov", "make_rim", "make_mid", "make_three", "blk_rim", "blk_mid
 _LOG = {"pace_mean", "tau", "energy_drain", "home_foul", "beta_touch_rim", "beta_touch_mid", "beta_touch_three",
         "beta_c_rim", "beta_c_mid", "beta_c_three", "c_reach_rim", "c_reach_mid", "c_reach_three",
         "c_quick_rim", "c_quick_mid", "c_quick_three", "blk_slope", "size_rim", "sf_str", "sf_quick",
-        "tov_slope", "orb_slope", "pace_game_sd", "shoot_game_sd", "foul_game_sd", "pace_shape", "score_flow", "reach_sat", "z_sat", "usage_sat", "bench_rec"}
+        "tov_slope", "orb_slope", "pace_game_sd", "shoot_game_sd", "foul_game_sd", "pace_shape", "score_flow", "reach_sat", "z_sat", "usage_sat", "bench_rec", "touch_sat"}
 
 
 def _load_defaults() -> dict:
@@ -184,7 +184,7 @@ STAGE2 = STAGE1 + ("beta_touch_rim", "beta_touch_mid", "beta_touch_three", "beta
                    "beta_c_three", "blk_rim", "blk_mid", "blk_three", "tau", "ast_rim", "ast_mid", "ast_three",
                    "energy_drain", "steal_share", "ft", "c_reach_rim", "c_reach_mid", "c_reach_three",
                    "c_quick_rim", "c_quick_mid", "c_quick_three", "blk_slope", "size_rim", "sf_str",
-                   "sf_quick", "tov_slope", "orb_slope", "pace_game_sd", "shoot_game_sd", "foul_game_sd", "pace_shape", "score_flow", "reach_sat", "z_sat", "usage_sat", "bench_rec", "sub_energy", "ev_mid", "ev_three")
+                   "sf_quick", "tov_slope", "orb_slope", "pace_game_sd", "shoot_game_sd", "foul_game_sd", "pace_shape", "score_flow", "reach_sat", "z_sat", "usage_sat", "bench_rec", "sub_energy", "touch_sat", "usage_cost", "sf_drive", "ev_mid", "ev_three")
 
 
 _SLOPES = ("beta_touch_rim", "beta_touch_mid", "beta_touch_three", "beta_c_rim", "beta_c_mid", "beta_c_three",
@@ -201,7 +201,8 @@ FIXED_BOUNDS = {
     "home_foul": (1.0, 1.25), "steal_share": (0.40, 0.80), "home_make": (0.0, 0.12),
     "ev_mid": (-0.15, 0.15), "ev_three": (-0.15, 0.15),
     "pace_game_sd": (0.005, 0.15), "shoot_game_sd": (0.005, 0.20), "foul_game_sd": (0.01, 0.40),
-    "pace_shape": (3.0, 40.0), "score_flow": (0.02, 1.0), "reach_sat": (8.0, 40.0), "z_sat": (1.0, 4.0), "usage_sat": (0.6, 3.0), "bench_rec": (0.004, 0.03), "sub_energy": (0.55, 0.85),
+    "pace_shape": (3.0, 40.0), "score_flow": (0.02, 1.0), "reach_sat": (8.0, 40.0), "z_sat": (1.0, 4.0), "usage_sat": (0.6, 3.0), "touch_sat": (1.5, 4.0), "usage_cost": (0.0, 0.5), "sf_drive": (0.05, 0.35), "sf_str": (0.45, 1.0),   # both routes to the line must matter (post strength and drives)
+     "bench_rec": (0.004, 0.03), "sub_energy": (0.55, 0.85),
 }
 
 

@@ -146,31 +146,64 @@ def test_awards_pick_expected_winners_and_respect_qualification():
     assert aw["finals_mvp"] == max((2, 4), key=lambda p: values[p])
 
 
-# ---- hall of fame --------------------------------------------------------------------------------------------------
+# ---- hall of fame ---------------------------------------------------------------------------------------------------
+class _S:
+    def __init__(self, value):
+        self.value = value
+
+
 class _C:
-    def __init__(self, pid, value, seasons=8, retired=10):
-        self.pid, self.seasons, self.retired_year = pid, [None] * seasons, retired
-        self._v = value
+    """A minimal career: per-season values, honours and a retirement year."""
+
+    def __init__(self, pid, values, retired=10, awards=()):
+        self.pid, self.seasons, self.retired_year, self.awards = pid, [_S(v) for v in values], retired, list(awards)
 
     def career_value(self):
-        return self._v
+        return float(sum(s.value for s in self.seasons))
 
 
 def test_hall_of_fame_paces_inductions_and_prefers_the_best():
     hof = HallOfFame()
-    careers = {i: _C(i, float(i)) for i in range(1, 101)}         # 100 retired careers, value = id
+    careers = {i: _C(i, [float(i)] * 8) for i in range(1, 101)}       # 100 retired careers; quality rises with id
     inducted = []
     for year in range(20, 40):
         inducted += hof.inductees_this_year(year, careers)
-    assert 23 <= len(inducted) <= 27                                # about 1.25 per season over 20 seasons
-    assert inducted[0] == 100 and min(inducted) >= 70               # only above the 70th-percentile floor, best first
+    assert 23 <= len(inducted) <= 27                                    # about 1.25 per season over 20 seasons
+    assert inducted[0] == 100 and min(inducted) >= 70                   # only above the 70th-percentile floor, best first
     assert len(set(inducted)) == len(inducted)
+
+
+def test_a_long_mediocre_career_loses_to_a_short_great_one():
+    """Longevity alone cannot carry a player: 25 average seasons must rank below 8 elite ones."""
+    from dynasty_sim.history.hof import peak_value, score_careers
+    filler = {i: _C(i, [40.0 + i] * 9, awards=[(1, "All-League")] * (i % 4)) for i in range(1, 40)}   # a realistic pool: many strong peaks
+    long_average = _C(100, [22.0] * 25)                                  # career 550 (mid-pack), best five 110 (bottom)
+    short_great = _C(101, [70.0] * 8)                                    # career 560, best five 350
+    scores = score_careers(list(filler.values()) + [long_average, short_great], {})
+    assert long_average.career_value() < 1.05 * short_great.career_value()
+    assert peak_value(short_great) > 3 * peak_value(long_average)
+    assert scores[101]["score"] > scores[100]["score"]
+    for_lack_of_peak = HallOfFame()
+    pool = {**filler, 100: long_average}
+    for year in range(20, 60):
+        for_lack_of_peak.inductees_this_year(year, pool)
+    assert len(for_lack_of_peak.players) >= 10 and 100 not in for_lack_of_peak.players   # never inducted on length alone
+
+
+def test_honours_and_titles_lift_a_career_of_equal_value():
+    from dynasty_sim.history.hof import honour_points, score_careers
+    a = _C(1, [30.0] * 8)
+    b = _C(2, [30.0] * 8, awards=[(3, "MVP"), (4, "MVP"), (5, "All-League")])
+    filler = [_C(10 + i, [10.0 + i] * 8) for i in range(30)]
+    assert honour_points(b, {2: 2}) == 10 + 10 + 3 + 2 * 3 and honour_points(a, {}) == 0
+    scores = score_careers([a, b] + filler, {2: 2})
+    assert scores[2]["score"] > scores[1]["score"]
 
 
 def test_hall_of_fame_needs_eligibility_and_dynasty_builders():
     hof = HallOfFame()
-    careers = {i: _C(i, 100.0 + i, seasons=3) for i in range(30)}       # too short a career
-    careers.update({100 + i: _C(100 + i, 50.0 + i, retired=None) for i in range(30)})   # still playing
+    careers = {i: _C(i, [100.0 + i] * 3) for i in range(30)}             # too short a career
+    careers.update({100 + i: _C(100 + i, [50.0 + i] * 9, retired=None) for i in range(30)})   # still playing
     assert hof.inductees_this_year(50, careers) == []
     got = hof.builders_this_year(50, [(1, 4, 0, 30, DYNASTY_TITLES), (2, 5, 0, 20, DYNASTY_TITLES - 1)])
     assert got == [(1, 4, DYNASTY_TITLES)] and hof.builders_this_year(51, [(1, 4, 0, 30, 9)]) == []

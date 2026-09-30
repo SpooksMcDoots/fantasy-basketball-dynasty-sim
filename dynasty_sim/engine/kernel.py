@@ -105,7 +105,7 @@ def _rebound(off, base_logit, is_three, prm, rb, on, box, wk):
 
 
 @njit(cache=True)
-def _shot(k, prm, diff, dq, z_touch, dstr, hm, clutch_term, rel_s, off_home, gfoul):
+def _shot(k, prm, diff, dq, z_touch, dstr, hm, clutch_term, rel_s, off_home, gfoul, drive, usage_rel):
     """Return (p_make, p_block, p_shooting_foul) for shot type k (0 rim, 1 mid, 2 three)."""
     size = 0.0
     if k == 0:
@@ -122,10 +122,17 @@ def _shot(k, prm, diff, dq, z_touch, dstr, hm, clutch_term, rel_s, off_home, gfo
         cr, cq, coff = prm[EP.P_C_REACH_THREE], prm[EP.P_C_QUICK_THREE], prm[EP.P_C_OFF_THREE]
         lgm, bt, bc = prm[EP.P_LG_MAKE_THREE], prm[EP.P_BETA_TOUCH_THREE], prm[EP.P_BETA_C_THREE]
         lgb, lgs = prm[EP.P_LG_BLK_THREE], prm[EP.P_LG_SF_THREE]
+    ts = prm[EP.P_TOUCH_SAT]
+    zt = ts * np.tanh(z_touch / ts)                       # diminishing returns on shooting skill
     c = _sig(cr * diff + cq * dq + coff)
-    pm = _sig(lgm + bt * z_touch - bc * (c - _sig(coff)) + hm + clutch_term + size)
+    pm = _sig(lgm + bt * zt - bc * (c - _sig(coff)) + hm + clutch_term + size
+              - prm[EP.P_USAGE_COST] * max(0.0, usage_rel - 1.0))            # a heavily used shooter is defended harder
     pb = _sig(lgb + prm[EP.P_BLK_SLOPE] * diff / 10.0)
-    ps = _sig(lgs + prm[EP.P_SF_STR] * dstr - prm[EP.P_SF_QUICK] * dq)
+    zs = prm[EP.P_Z_SAT]
+    lg_ps = lgs + prm[EP.P_SF_STR] * zs * np.tanh(dstr / zs) - prm[EP.P_SF_QUICK] * dq
+    if k < 2:
+        lg_ps += prm[EP.P_SF_DRIVE] * drive                # drives draw contact; catch-and-shoot threes do not
+    ps = _sig(lg_ps)
     ps *= gfoul
     if off_home:
         ps *= prm[EP.P_HOME_FOUL]
@@ -259,8 +266,42 @@ def _game(pl, npl, coach, prm, box, score, poss, log):
             ux = prm[EP.P_USAGE_TOUCH] * r[S.C_TOUCH] + prm[EP.P_USAGE_VISION] * r[S.C_VISION] + prm[EP.P_USAGE_TEMPER] * r[S.C_TEMPER]
             uw[j] = np.exp(prm[EP.P_USAGE_SAT] * np.tanh(ux / prm[EP.P_USAGE_SAT]))
 
+        # 0. intentional foul on a poor free-throw shooter: late, close, fouling team not ahead
+        if fresh and period >= 3 and period_end - elapsed <= prm[EP.P_HACK_SECS] and score[de] <= score[off] \
+                and score[off] - score[de] <= prm[EP.P_HACK_MARGIN]:
+            hj = 0
+            hp = 2.0
+            for j in range(5):
+                pj = _sig(prm[EP.P_LG_FT] + prm[EP.P_BETA_TOUCH_FT] * prm[EP.P_TOUCH_SAT]
+                          * np.tanh(pl[off, on[off, j], S.C_TOUCH] / prm[EP.P_TOUCH_SAT]))
+                if pj < hp:
+                    hp = pj
+                    hj = j
+            if hp < prm[EP.P_HACK_P]:
+                hpid = on[off, hj]
+                fp = on[de, int(np.random.random() * 5)]
+                fouls[de, fp] += 1
+                box[de, fp, S.ST_PF] += 1
+                tfoul[de] += 1
+                tlen *= 0.15
+                if use_log:
+                    nlog = _log(log, nlog, period, clock, off, S.EV_NSF, fp, 1, 0, 1)
+                if tfoul[de] >= prm[EP.P_BONUS_AT]:
+                    made, last = _free_throws(2, hp)
+                    box[off, hpid, S.ST_FTA] += 2
+                    box[off, hpid, S.ST_FTM] += made
+                    box[off, hpid, S.ST_PTS] += made
+                    score[off] += made
+                    if not last and _rebound(off, prm[EP.P_LG_ORB_FT], 0.0, prm, rb, on, box, wk):
+                        next_off = off
+                        next_fresh = False
+                else:
+                    next_off = off
+                    next_fresh = False
+                done = True
+
         # 1. non-shooting foul
-        if np.random.random() < gfoul * prm[EP.P_NSF_BASE] * np.exp(prm[EP.P_NSF_AGGR] * coach[de, S.CO_FOUL]):
+        if not done and np.random.random() < gfoul * prm[EP.P_NSF_BASE] * np.exp(prm[EP.P_NSF_AGGR] * coach[de, S.CO_FOUL]):
             fj = int(np.random.random() * 5)
             fp = on[de, fj]
             fouls[de, fp] += 1
@@ -272,7 +313,8 @@ def _game(pl, npl, coach, prm, box, score, poss, log):
             if tfoul[de] >= prm[EP.P_BONUS_AT]:
                 sj = _pick(uw, 5)
                 sp = on[off, sj]
-                pft = _sig(prm[EP.P_LG_FT] + prm[EP.P_BETA_TOUCH_FT] * pl[off, sp, S.C_TOUCH])
+                pft = _sig(prm[EP.P_LG_FT] + prm[EP.P_BETA_TOUCH_FT] * prm[EP.P_TOUCH_SAT]
+                           * np.tanh(pl[off, sp, S.C_TOUCH] / prm[EP.P_TOUCH_SAT]))
                 made, last = _free_throws(2, pft)
                 box[off, sp, S.ST_FTA] += 2
                 box[off, sp, S.ST_FTM] += made
@@ -334,11 +376,13 @@ def _game(pl, npl, coach, prm, box, score, poss, log):
             diff_rim = rs * np.tanh(diff_rim / rs)
             dq = zs * np.tanh((qk[de, dj] - qk[off, sj]) / zs)
             dstr = srow[S.C_STR] - pl[de, dp, S.C_STR]
-            pft = _sig(prm[EP.P_LG_FT] + prm[EP.P_BETA_TOUCH_FT] * srow[S.C_TOUCH])
+            pft = _sig(prm[EP.P_LG_FT] + prm[EP.P_BETA_TOUCH_FT] * prm[EP.P_TOUCH_SAT]
+                       * np.tanh(srow[S.C_TOUCH] / prm[EP.P_TOUCH_SAT]))
+            usage_rel = uw[sj] * 5.0 / max(uw.sum(), 1e-9)
             best = -1e9
             for k in range(3):
                 pm, pb, ps = _shot(k, prm, diff_rim if k == 0 else diff_std, dq, srow[S.C_TOUCH], dstr,
-                                   hm, clutch, rel[off, sj], off == 0, gfoul)
+                                   hm, clutch, rel[off, sj], off == 0, gfoul, hd[off, sj], usage_rel)
                 pm_a[k] = pm
                 pb_a[k] = pb
                 ps_a[k] = ps
