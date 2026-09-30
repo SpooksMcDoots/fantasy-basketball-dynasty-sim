@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "dynasty_sim"
 version = "0.0.1"
 requires-python = ">=3.11"
-dependencies = ["numpy", "numba", "pandas", "pyarrow", "pyyaml"]
+dependencies = ["numpy", "numba", "pandas", "pyarrow", "pyyaml", "scipy"]
 
 [project.optional-dependencies]
 dev = ["pytest", "hypothesis"]
