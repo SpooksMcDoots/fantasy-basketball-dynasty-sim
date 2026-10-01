@@ -94,7 +94,7 @@ code, pre { background: var(--out); border-radius: 5px; padding: 1px 5px; font-s
 .err { color: var(--bad); margin-top: 8px; }
 
 /* charts, heat tables, bars */
-.lchart { width: 100%; height: auto; display: block; } .lchart text { fill: var(--muted); font-size: 10px; } .lchart .grid { stroke: var(--line); stroke-width: 1; } .lchart .ref { stroke-dasharray: 4 3; }
+.lchart { width: 100%; height: auto; display: block; } .lchart text { fill: var(--muted); font-size: 12.5px; } .lchart .grid { stroke: var(--line); stroke-width: 1; } .lchart .ref { stroke-dasharray: 4 3; }
 .lg { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 4px; } .lg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
 .cgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-bottom: 16px; } .cgrid .card { margin-bottom: 0; }
 @media (max-width: 480px) { .cgrid { grid-template-columns: minmax(0, 1fr); } }
@@ -107,6 +107,8 @@ th.sortable { cursor: pointer; } th.sortable:hover { color: var(--ink); }
 tr.pick { cursor: pointer; } tr.pick:hover td { background: var(--out); } tr.pick.on td { background: var(--sel); }
 .hm td.cell { text-align: center; cursor: pointer; min-width: 44px; } .hm td.cell:hover { outline: 2px solid var(--ink); }
 nav.tabs { flex-wrap: wrap; } nav.tabs a { padding: 9px 12px; }
+header .actions { max-width: 100%; } #saved { max-width: 100%; min-width: 0; }
+@media (max-width: 600px) { .slabel { flex-basis: 120px; } .strip-inner { min-width: 620px; } }
 #drop { position: fixed; inset: 0; background: rgba(47,93,138,.25); display: none; align-items: center; justify-content: center; font-size: 24px; z-index: 20; pointer-events: none; }
 </style>
 </head>
@@ -386,7 +388,7 @@ function valueChart(p) {
 }
 
 /* ---------- shared: charts and small widgets ---------- */
-const CW = 640, CL = 46, CR = 12;
+const CW = 640, CL = 54, CR = 14;
 const CH = new Map(); let chN = 0, tipOwner = null;
 const autoFmt = v => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toFixed(3));
 const pctFmt = v => (100 * v).toFixed(0) + "%";
@@ -503,8 +505,8 @@ function recordsPage() {
   let html = pills([["all", "League"], ["human", "Human"], ["goliath", "Goliath"], ["elf", "Elf"]], recScope, "rs");
   if (recSel && best.has(recSel)) html += recProgress(recSel, best.get(recSel), breaks.get(recSel) ?? [], holder);
   else html += `<div class="card muted">Click any record to see how it has changed hands over the years.</div>`;
-  html += REC_GROUPS.map(([title, kind, stats]) => `<div class="card"><h2>${title}${recScope === "all" ? "" : " · " + D.races[["human", "goliath", "elf"].indexOf(recScope)]}</h2><table>${head}${stats.map(s => row(STAT_LABEL[s], best.get(`${kind}|${s}|${recScope}|max`))).join("")}</table></div>`).join("");
-  html += `<div class="card"><h2>Teams</h2><table>${head}${TEAM_RECS.map(([k, s, d, l]) => row(l, best.get(`${k}|${s}|all|${d}`))).join("")}</table></div>`;
+  html += REC_GROUPS.map(([title, kind, stats]) => `<div class="card"><h2>${title}${recScope === "all" ? "" : " · " + D.races[["human", "goliath", "elf"].indexOf(recScope)]}</h2><div class="scroll"><table>${head}${stats.map(s => row(STAT_LABEL[s], best.get(`${kind}|${s}|${recScope}|max`))).join("")}</table></div></div>`).join("");
+  html += `<div class="card"><h2>Teams</h2><div class="scroll"><table>${head}${TEAM_RECS.map(([k, s, d, l]) => row(l, best.get(`${k}|${s}|all|${d}`))).join("")}</table></div></div>`;
   return html;
 }
 function recProgress(key, cur, log, holder) {
@@ -567,7 +569,7 @@ function hofPage() {
         rows.sort((a, b) => b.y - a.y).map(h => { const p = player(h.p), o = origin(p); return `<tr><td data-v="${h.y}">${h.y}</td><td class="l" data-v="${esc(p.n)}">${plink(h.p)}</td><td class="l" data-v="${o}"><span class="dot" style="background:${RCOL[o]}"></span>${esc(ORIGIN()[o])}</td><td class="l" data-v="${h.role ?? ""}">${esc(h.role ?? "—")}</td><td data-v="${p.s?.length ?? 0}">${p.s?.length ?? 0}</td><td data-v="${h.career}">${fl(h.career, 0)}</td><td data-v="${h.peak}">${fl(h.peak, 0)}</td><td data-v="${h.honours}">${fl(h.honours, 0)}</td><td data-v="${h.score}">${fl(h.score, 2)}</td></tr>`; }).join("") + `</table></div>` : `<div class="muted">Nobody yet.</div>`) + `</div>`;
   } else if (hofView === "builders") {
     html += `<div class="card"><h2>Dynasty builders</h2><div class="muted" style="margin-bottom:6px">Heads of house honoured for the titles won during their tenure.</div>` +
-      (D.builders.length ? `<table><tr><th>Class</th><th class="l">Head</th><th class="l">House</th><th>Titles</th></tr>${[...D.builders].sort((a, b) => b.y - a.y).map(b => `<tr><td>${b.y}</td><td class="l">${plink(b.p)}</td><td class="l">${hlink(b.h)}</td><td>${b.t}</td></tr>`).join("")}</table>` : `<div class="muted">No head of house has yet won three titles in a tenure.</div>`) + `</div>`;
+      (D.builders.length ? `<div class="scroll"><table><tr><th>Class</th><th class="l">Head</th><th class="l">House</th><th>Titles</th></tr>${[...D.builders].sort((a, b) => b.y - a.y).map(b => `<tr><td>${b.y}</td><td class="l">${plink(b.p)}</td><td class="l">${hlink(b.h)}</td><td>${b.t}</td></tr>`).join("")}</table></div>` : `<div class="muted">No head of house has yet won three titles in a tenure.</div>`) + `</div>`;
   } else if (hofView === "career") {
     const top = (f, fmt, sub) => [...P].sort((a, b) => f(b.p) - f(a.p)).slice(0, 10).filter(e => f(e.p) > 0).map(e => ({ who: plink(e.id) + (e.p.hof != null ? ' <span class="chip hof">HOF</span>' : ""), val: fmt(f(e.p)), sub: sub(e) }));
     const yrs = e => `${fy(e.first)}–${fy(e.last)}`, n = v => Math.round(v).toLocaleString();
@@ -586,7 +588,7 @@ function hofPage() {
     const list = (f, d, fm) => [...rows].sort((a, b) => d * (f(b) - f(a))).slice(0, 10).map(r => ({ who: tlink(r.t) + (r.champ ? ' <span class="chip champ">Champion</span>' : ""), val: fm(r), sub: `<a href="#/season/${r.y}">${r.y}</a>` }));
     html += `<div class="grid2">${leaderCard("Most wins in a season", list(r => r.w, 1, r => `${r.w}-${r.l}`))}${leaderCard("Fewest wins in a season", list(r => r.w, -1, r => `${r.w}-${r.l}`))}${leaderCard("Best season margin", list(r => r.mov, 1, r => (r.mov > 0 ? "+" : "") + fl(r.mov)))}${leaderCard("Worst season margin", list(r => r.mov, -1, r => fl(r.mov)))}</div>`;
     const titles = D.teams.map(t => ({ t: t.id, n: X.stats[t.id].titles.length })).sort((a, b) => b.n - a.n);
-    html += `<div class="card" style="margin-top:16px"><h2>Titles by team</h2>${titles.map(x => `<div style="display:flex;gap:8px;align-items:center;margin:3px 0"><span style="flex:0 0 190px">${tlink(x.t)}</span><div class="stack" style="flex:1"><i style="width:${100 * x.n / Math.max(titles[0].n, 1)}%;background:var(--gold)"></i></div><b>${x.n}</b></div>`).join("")}</div>`;
+    html += `<div class="card" style="margin-top:16px"><h2>Titles by team</h2>${titles.map(x => `<div style="display:flex;gap:8px;align-items:center;margin:3px 0"><span style="flex:0 1 190px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${tlink(x.t)}</span><div class="stack" style="flex:1"><i style="width:${100 * x.n / Math.max(titles[0].n, 1)}%;background:var(--gold)"></i></div><b>${x.n}</b></div>`).join("")}</div>`;
   }
   return html;
 }
