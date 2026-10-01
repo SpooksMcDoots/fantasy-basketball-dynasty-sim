@@ -11,6 +11,7 @@ from pathlib import Path
 from dynasty_sim.core.types import RACES, TRAITS
 from dynasty_sim.engine import schema as S
 from dynasty_sim.history import alarms as AL
+from dynasty_sim.history import awards as AW
 from dynasty_sim.history import events as EV
 from dynasty_sim.history import rivalry as RV
 from dynasty_sim.output.render import RACE_LABEL, Renderer
@@ -93,6 +94,10 @@ def _years(world) -> list:
                "aw": {k: aw[k] for k in AWARD_KEYS if aw.get(k) is not None}}
         if aw.get("all_league"):
             row["aw"]["all_league"] = [int(p) for p in aw["all_league"]]
+        fl = led.finals_mvp_lines.get(res.year)
+        if fl is not None:
+            pg = AW.per_game(fl)
+            row["fmvp"] = [int(fl[0]), _r1(pg["ppg"]), _r1(pg["rpg"]), _r1(pg["apg"])]   # finals games, pts reb ast per game
         snap = finals.get(res.year)
         if snap is not None:
             row["fin"] = {"teams": [int(t) for t in snap.teams], "score": list(snap.score)}

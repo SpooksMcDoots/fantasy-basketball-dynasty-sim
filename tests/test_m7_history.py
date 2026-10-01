@@ -37,6 +37,17 @@ def test_children_inherit_the_fathers_surname_else_mothers():
     assert " " in nb.person(3) and nb.person(3).split()[0] == nb.given(3)
 
 
+def test_names_never_read_as_code_values(monkeypatch):
+    nb = _book({}, seed=7)
+    rng = lambda i: nb._rng(0, i)
+    import dynasty_sim.history.names as N
+    words = lambda: {nb._word(rng(i), "human", 2) for i in range(250_000)}
+    monkeypatch.setattr(N, "_RESERVED", set())
+    assert "None" in words()                                   # the syllable pools can spell it...
+    monkeypatch.undo()
+    assert not (words() & N._RESERVED)                         # ...and the generator redraws it
+
+
 def test_team_and_house_names_are_distinct():
     nb = _book({})
     assert len({nb.team(i) for i in range(8)}) == 8
@@ -144,6 +155,18 @@ def test_awards_pick_expected_winners_and_respect_qualification():
     assert aw["roy"] == max((2, 4), key=lambda p: values[p])
     assert aw["most_improved"] == max((1, 4), key=lambda p: values[p] - {1: 10.0, 4: -50.0}[p])
     assert aw["finals_mvp"] == max((2, 4), key=lambda p: values[p])
+
+
+def test_finals_mvp_is_judged_on_the_finals():
+    lines = {1: _line(pts=2300, fgm=850, fga=1650, ftm=450, fta=520, ast=450, orb=150, drb=550, stl=70),   # season star
+             2: _line(pts=700, fgm=270, fga=600, ftm=100, fta=130, stl=100, blk=100, drb=450, orb=100)}
+    values = AW.season_values(lines)
+    finals = {1: _line(games=4, minutes=140, pts=60, fgm=22, fga=70, ftm=10, fta=14, tov=12),           # cold series
+              2: _line(games=4, minutes=140, pts=110, fgm=42, fga=70, ftm=20, fta=24, drb=40, orb=12)}   # hot series
+    aw = AW.yearly_awards(lines, values, {1: 0, 2: 0}, rookies=set(), prev_values={}, champion_team=0, finals=finals)
+    assert aw["finals_mvp"] == 2
+    assert AW.yearly_awards(lines, values, {1: 0, 2: 0}, set(), {}, 0)["finals_mvp"] == 1    # no finals data: season value
+    assert AW.finals_line_text(finals[2]) == "27.5 pts, 13.0 reb, 0.0 ast in 4 finals games"
 
 
 def test_mvp_blends_value_scoring_and_team_success():

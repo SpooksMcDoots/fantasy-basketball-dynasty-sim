@@ -311,9 +311,10 @@ function seasonPage(y) {
   }
   html += `<div class="card"><h2>Playoffs</h2>${br || '<div class="muted">No playoff data.</div>'}</div></div><div style="height:16px"></div>`;
   const line = (pid) => { const r = seasonRow(pid, y); return `${plink(pid)} <span class="muted">${r ? `${esc(tname(r[2]))} · ${fl(r[5])} pts, ${fl(r[6])} reb, ${fl(r[7])} ast` : ""}</span>`; };
+  const fline = (pid) => { const [g, p, r, a] = yr.fmvp; return `${plink(pid)} <span class="muted">${esc(tname(yr.c))} · ${fl(p)} pts, ${fl(r)} reb, ${fl(a)} ast in ${g} finals game${g === 1 ? "" : "s"}</span>`; };
   const aw = yr.aw ?? {};
   html += `<div class="card"><h2>Awards</h2><ul class="awards" style="list-style:none;margin:0;padding:0">` +
-    AWARD_LABEL.filter(([k]) => aw[k] != null).map(([k, lab]) => `<li><span class="lab">${lab}</span>${line(aw[k])}</li>`).join("") +
+    AWARD_LABEL.filter(([k]) => aw[k] != null).map(([k, lab]) => `<li><span class="lab">${lab}</span>${k === "finals_mvp" && yr.fmvp ? fline(aw[k]) : line(aw[k])}</li>`).join("") +
     (aw.all_league ? `<li><span class="lab">All-League first team</span></li>${aw.all_league.map(p => `<li style="margin-left:128px">${line(p)}</li>`).join("")}` : "") + `</ul></div>`;
   return html;
 }

@@ -50,6 +50,8 @@ class Renderer:
         d, k = e.detail, e.kind
         who = ", ".join(P(a) for a in e.actors)
         if k == "award":
+            if d.get("line"):
+                return f"{who} was named {d['award']} ({d['line']})."
             return f"{who} was named {d['award']} ({e.value:.1f} points added)."
         if k == "record":
             stat = STAT_LABEL.get(d["stat"], d["stat"])
