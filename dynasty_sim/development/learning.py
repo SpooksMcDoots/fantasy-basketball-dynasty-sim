@@ -14,6 +14,11 @@ def window_mult(age: float, race: int, P: Params) -> float:
     return float(mult) if lo <= age <= hi else 1.0
 
 
+def wisdom_bonus(age: float, race: int, P: Params) -> float:
+    """Ceiling rise (SD) from experience: a race's yearly wisdom rate for every year lived past adulthood, capped."""
+    return float(min(P.dev["wisdom_cap"], P.wisdom[race] * max(0.0, age - P.adult_age[race])))
+
+
 def initial_gap(ae: float, P: Params) -> float:
     """How far below the genetic ceiling a player of effective age `ae` starts (SD)."""
     return P.dev["skill_start_gap"] * P.dev["skill_gap_decay"] ** max(0.0, ae - 20.0)

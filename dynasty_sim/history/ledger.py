@@ -6,7 +6,7 @@ from typing import Optional
 
 import numpy as np
 
-from dynasty_sim.core.types import LOCI, RACES
+from dynasty_sim.core.types import LOCI, RACES, TRAIT_IDX
 from dynasty_sim.development.aging import age_eff
 from dynasty_sim.engine import schema as S
 from dynasty_sim.history import awards as AW
@@ -16,6 +16,7 @@ from dynasty_sim.history.names import NameBook
 from dynasty_sim.history.records import (
     MIN_GAMES_FOR_SEASON_RECORD, PLAYER_CAREER, PLAYER_GAME, PLAYER_SEASON, RecordBook,
 )
+from dynasty_sim.genetics.genome import adult_phenotype_z, to_units
 from dynasty_sim.history.rivalry import RivalryBoard, pair
 
 OUTLIER_PCT = 0.995
@@ -85,10 +86,13 @@ class Ledger:
         self.values: dict[int, dict] = {}                  # year -> {pid: season value}
         self.snapshots: list[GameSnapshot] = []
         self.rivalry_top: dict[int, list] = {}
+        self.rivalry_hist: dict[int, tuple] = {}           # year -> (index per house pair, flagging level)
         self.names = NameBook(world.seed, lambda pid: world.pop.people.get(pid) or self.persons.get(pid))
         self.titles: dict[int, list] = {}                   # house -> [years]
         self.player_titles: dict[int, int] = {}            # pid -> titles won as one of his team's three best players
         self._pop_ptr = 0
+        self._heights: dict[int, float] = {}
+        self._role_votes: dict[int, dict] = {}              # pid -> {role: seasons held}
         self._value_hist: list = []
         self._mov_hist: list = []
         self._heads: dict[int, tuple] = {}                 # house -> (pid, start year)
@@ -187,10 +191,31 @@ class Ledger:
             c.seasons.append(SeasonLine(year, year - c.birth_year, team_of[pid], int(v[0]), v[1:].copy(), float(values[pid])))
             c.houses.append(self.house_of_team(team_of[pid]))
 
+    def career_role(self, pid: int):
+        """The role a player held in most of his qualified seasons (ties go to the taller role)."""
+        votes = self._role_votes.get(pid)
+        if not votes:
+            return None
+        return max(votes, key=lambda r: (votes[r], ("guard", "forward", "center").index(r)))
+
+    def _height(self, lg, pid: int) -> float:
+        """Adult height in cm (cached): decides a player's role for the All-League lineup."""
+        h = self._heights.get(pid)
+        if h is None:
+            g = (self.persons.get(pid) or lg.persons[pid]).genome
+            h = self._heights[pid] = float(to_units(adult_phenotype_z(g, self.world.P), g.ancestry, self.world.P)[TRAIT_IDX["height"]])
+        return h
+
     def _awards(self, lg, year, res, lines, team_of, values) -> None:
         prev = self.values.get(year - 1, {})
         rookies = {p for p in lines if len(self.careers[p].seasons) == 1}
-        aw = AW.yearly_awards(lines, values, team_of, rookies, prev, res.champion)
+        qual = [p for p, v in lines.items() if AW.qualified(v)]
+        roles = AW.assign_roles({p: self._height(lg, p) for p in qual})
+        for p, role in roles.items():
+            votes = self._role_votes.setdefault(p, {})
+            votes[role] = votes.get(role, 0) + 1
+        win = {t: float(res.wins[t] / max(res.wins[t] + res.losses[t], 1)) for t in range(len(res.wins))}
+        aw = AW.yearly_awards(lines, values, team_of, rookies, prev, res.champion, roles, win)
         self.awards[year] = aw
         spec = {"mvp": ("MVP", EV.LANDMARK), "finals_mvp": ("Finals MVP", EV.MAJOR), "dpoy": ("Defensive Player", EV.MAJOR),
                 "roy": ("Rookie of the Year", EV.MAJOR), "scoring": ("Scoring Champion", EV.NOTABLE),
@@ -302,6 +327,7 @@ class Ledger:
             self.log.add("rivalry", year, (), (a, b), EV.NOTABLE, "rivalry_index", float(self.rivalry.index[(a, b)]),
                          why=self.rivalry.why((a, b)))
         self.rivalry_top[year] = self.rivalry.top(3)
+        self.rivalry_hist[year] = (dict(self.rivalry.index), self.rivalry.level)    # for the viewer's index-over-time chart
 
     # ---- population events --------------------------------------------------------------------------------
     def _consume_population_events(self, lg, year: int) -> None:
@@ -350,13 +376,14 @@ class Ledger:
                 self._heads[hid] = (house.head_id, year) if house.head_id is not None else None
                 if self._heads[hid] is None:
                     del self._heads[hid]
-        for pid in self.hof.inductees_this_year(year, self.careers, self.player_titles):
+        for pid in self.hof.inductees_this_year(year, self.careers, self.player_titles,
+                                                 {p: self.career_role(p) for p in self.careers}):
             c = self.careers[pid]
             c.hof_year = year
             c.awards.append((year, "Hall of Fame"))
             self.log.add("hof", year, (pid,), (c.houses[-1],), EV.LANDMARK, "hof_score", self.hof.record[pid]["score"],
                          career=self.hof.record[pid]["career"], peak=self.hof.record[pid]["peak"],
-                         honours=self.hof.record[pid]["honours"])
+                         honours=self.hof.record[pid]["honours"], role=self.hof.record[pid]["role"])
         for pid, hid, titles in self.hof.builders_this_year(year, ended):
             self.log.add("hof_builder", year, (pid,), (hid,), EV.LANDMARK, "titles", float(titles))
 

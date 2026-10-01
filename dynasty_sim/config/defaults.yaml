@@ -82,6 +82,7 @@ development:
   skill_noise: 0.08
   skill_start_gap: 1.0         # SD below genetic z at age_eff 20
   skill_gap_decay: 0.82        # gap shrinks by this factor per age_eff year older than 20
+  wisdom_cap: 1.0              # most a race's experience can raise the vision/temperament ceiling (SD)
   skill_ceiling_z: 0.0         # ceiling = genetic z + this (spec says +1.5; that would inflate the calibrated baseline)
   skill_decline: 0.02          # SD per year after skill_decline_age_eff
   skill_decline_age_eff: 33

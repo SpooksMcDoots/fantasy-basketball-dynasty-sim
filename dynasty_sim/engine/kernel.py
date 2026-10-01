@@ -126,7 +126,8 @@ def _shot(k, prm, diff, dq, z_touch, dstr, hm, clutch_term, rel_s, off_home, gfo
     zt = ts * np.tanh(z_touch / ts)                       # diminishing returns on shooting skill
     c = _sig(cr * diff + cq * dq + coff)
     pm = _sig(lgm + bt * zt - bc * (c - _sig(coff)) + hm + clutch_term + size
-              - prm[EP.P_USAGE_COST] * max(0.0, usage_rel - 1.0))            # a heavily used shooter is defended harder
+              - prm[EP.P_USAGE_COST] * max(0.0, usage_rel - 1.0)             # a heavily used shooter is defended harder
+              - prm[EP.P_USAGE_COST_HI] * max(0.0, usage_rel - prm[EP.P_USAGE_HI]))   # and a one-man offence harder still
     pb = _sig(lgb + prm[EP.P_BLK_SLOPE] * diff / 10.0)
     zs = prm[EP.P_Z_SAT]
     lg_ps = lgs + prm[EP.P_SF_STR] * zs * np.tanh(dstr / zs) - prm[EP.P_SF_QUICK] * dq
@@ -263,7 +264,8 @@ def _game(pl, npl, coach, prm, box, score, poss, log):
 
         for j in range(5):
             r = pl[off, on[off, j]]
-            ux = prm[EP.P_USAGE_TOUCH] * r[S.C_TOUCH] + prm[EP.P_USAGE_VISION] * r[S.C_VISION] + prm[EP.P_USAGE_TEMPER] * r[S.C_TEMPER]
+            ux = prm[EP.P_USAGE_TOUCH] * r[S.C_TOUCH] + prm[EP.P_USAGE_VISION] * r[S.C_VISION] + prm[EP.P_USAGE_TEMPER] * r[S.C_TEMPER] \
+                + prm[EP.P_USAGE_SIZE] * max(0.0, rb[off, j])
             uw[j] = np.exp(prm[EP.P_USAGE_SAT] * np.tanh(ux / prm[EP.P_USAGE_SAT]))
 
         # 0. intentional foul on a poor free-throw shooter: late, close, fouling team not ahead

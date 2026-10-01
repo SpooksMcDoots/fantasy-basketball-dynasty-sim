@@ -139,7 +139,7 @@ def run_stability_seed(args) -> dict:
         ok, bad = inside_table(m, table)
         seasons.append({"year": r.year, "human_share": float(r.race_share[0]), "inside": ok, "bad": bad})
     return {"seed": seed,
-            "mean_early": mean_z(win(10, 20)), "mean_late": rec[-1].league_mean_z,
+            "mean_early": mean_z(win(10, 20)), "mean_late": mean_z(win(years - 9, years)),     # window against window: one season is too noisy
             "p99_early": pooled(win(10, 20)), "p99_late": pooled(win(years - 9, years)),
             "z_early": distinct(win(10, 20)), "z_late": distinct(win(years - 9, years)),
             "pop_p99_early": pop_p99(win(10, 20)), "pop_p99_late": pop_p99(win(years - 9, years)),

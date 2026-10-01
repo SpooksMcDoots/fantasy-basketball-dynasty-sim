@@ -102,8 +102,8 @@ class Renderer:
         if k == "young_death":
             return f"{who} of {H(e.houses[0])} died young ({d['age']})."
         if k == "hof":
-            return (f"{who} was inducted into the Hall of Fame (career value {d['career']:.0f}, best five seasons "
-                    f"{d['peak']:.0f}, {d['honours']:.0f} honour points).")
+            return (f"{who} was inducted into the Hall of Fame as a {d.get('role') or 'player'} (career value {d['career']:.0f}, "
+                    f"best five seasons {d['peak']:.0f}, {d['honours']:.0f} honour points).")
         if k == "hof_builder":
             return f"{who} was honoured as a dynasty builder for {e.value:.0f} titles as head of {H(e.houses[0])}."
         if k == "succession_effect":

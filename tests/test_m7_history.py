@@ -146,6 +146,36 @@ def test_awards_pick_expected_winners_and_respect_qualification():
     assert aw["finals_mvp"] == max((2, 4), key=lambda p: values[p])
 
 
+def test_mvp_blends_value_scoring_and_team_success():
+    big = _line(pts=500, fgm=250, fga=330, orb=300, drb=700, stl=100, blk=200)           # top value, 7 ppg
+    scorer = _line(pts=2400, fgm=900, fga=1750, ftm=450, fta=520, ast=300, orb=100, drb=400)   # 34 ppg
+    allround = _line(pts=1960, fgm=760, fga=1500, ftm=300, fta=360, ast=500, orb=100, drb=500, stl=90)   # 28 ppg
+    filler = _line(pts=700, fgm=280, fga=650, ftm=70, fta=90, ast=100, orb=60, drb=200)
+    lines = {1: big, 2: scorer, 3: allround, 4: filler}
+    values = {1: 300.0, 2: 270.0, 3: 285.0, 4: 40.0}
+    team_of = {1: 0, 2: 1, 3: 2, 4: 3}
+    pick = lambda win: AW.mvp_pick([1, 2, 3, 4], lines, values, team_of, win)
+    assert pick(None) != 1                                       # best value alone no longer wins with 7 points a game
+    assert pick({0: 0.5, 1: 0.35, 2: 0.80, 3: 0.4}) == 3         # a near-equal star on the best team beats a scorer on a loser
+    assert pick({0: 0.5, 1: 0.80, 2: 0.35, 3: 0.4}) == 2         # and the other way round
+    assert sum(AW.MVP_WEIGHTS) == pytest.approx(1.0)
+
+
+def test_all_league_is_a_lineup_when_roles_are_known():
+    values = {p: 100.0 - p for p in range(1, 13)}                          # player 1 is the best, 12 the worst
+    roles = {p: ("center" if p <= 4 else "forward" if p <= 8 else "guard") for p in values}
+    team = AW.all_league_team(list(values), values, roles)
+    assert sorted(roles[p] for p in team) == ["center", "forward", "forward", "guard", "guard"]
+    assert team[0] == 1 and team == sorted(team)                           # best value first
+    assert AW.all_league_team(list(values), values, None) == [1, 2, 3, 4, 5]
+    assert len(AW.all_league_team([1, 2, 3], values, {1: "guard", 2: "guard", 3: "guard"})) == 3
+
+
+def test_roles_split_the_league_into_height_thirds():
+    r = AW.assign_roles({p: 170.0 + p for p in range(9)})
+    assert [r[p] for p in range(9)] == ["guard"] * 3 + ["forward"] * 3 + ["center"] * 3
+
+
 # ---- hall of fame ---------------------------------------------------------------------------------------------------
 class _S:
     def __init__(self, value):
@@ -198,6 +228,23 @@ def test_honours_and_titles_lift_a_career_of_equal_value():
     assert honour_points(b, {2: 2}) == 10 + 10 + 3 + 2 * 3 and honour_points(a, {}) == 0
     scores = score_careers([a, b] + filler, {2: 2})
     assert scores[2]["score"] > scores[1]["score"]
+
+
+def test_each_career_is_judged_against_its_own_role():
+    from dynasty_sim.history.hof import score_careers
+    centers = [_C(i, [150.0 + 5 * i] * 8) for i in range(20)]              # centers rack up a lot of value
+    guards = [_C(100 + i, [40.0 + 2 * i] * 8) for i in range(20)]           # guards rack up much less
+    roles = {**{c.pid: "center" for c in centers}, **{c.pid: "guard" for c in guards}}
+    pooled = score_careers(centers + guards, {})
+    by_role = score_careers(centers + guards, {}, roles)
+    assert min(pooled[c.pid]["score"] for c in centers) > max(pooled[g.pid]["score"] for g in guards)     # pooled: every center beats every guard
+    assert by_role[119]["score"] == pytest.approx(by_role[19]["score"])                                   # best guard ties best center
+    assert by_role[100]["role"] == "guard" and by_role[0]["role"] == "center"
+    top = sorted(by_role, key=lambda p: -by_role[p]["score"])[:8]
+    assert 3 <= sum(p >= 100 for p in top) <= 5                             # a role-balanced top of the class
+    few_roles = {**{c.pid: "center" for c in centers}, **{g.pid: "guard" for g in guards[:3]}}
+    few = score_careers(centers + guards[:3], {}, few_roles)
+    assert few[100]["score"] == pytest.approx(score_careers(centers + guards[:3], {})[100]["score"])       # too few guards: pooled
 
 
 def test_hall_of_fame_needs_eligibility_and_dynasty_builders():

@@ -77,9 +77,12 @@ def test_new_prospects_start_with_expected_growth_still_ahead():
 
 
 def test_learning_window_multiplies_growth():
-    assert learning.window_mult(15, RACE_IDX["human"], P) == 2.0
-    assert learning.window_mult(25, RACE_IDX["human"], P) == 1.0
-    assert learning.window_mult(30, RACE_IDX["elf"], P) == 2.2
+    for race in ("human", "elf"):                       # inside the configured window the multiplier applies; outside it does not
+        r = RACE_IDX[race]
+        lo, hi, mult = P.learn_window[r]
+        assert mult > 1.0
+        assert learning.window_mult(lo, r, P) == mult and learning.window_mult(hi, r, P) == mult
+        assert learning.window_mult(lo - 1, r, P) == 1.0 and learning.window_mult(hi + 1, r, P) == 1.0
 
 
 # ---- injuries ------------------------------------------------------------------------------

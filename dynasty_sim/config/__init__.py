@@ -32,6 +32,7 @@ class Params:
     timescale: np.ndarray        # [R] age_eff = 20 + (age - adult_age) / timescale
     decline_mult: np.ndarray     # [R] scales athletic decline
     learn_window: np.ndarray     # [R,3] critical learning window (lo, hi, multiplier)
+    wisdom: np.ndarray           # [R] yearly rise (SD) of the vision and temperament ceiling after adulthood
     league: dict
     dev: dict
     injury: dict
@@ -72,6 +73,8 @@ def load_params(overrides: dict | None = None) -> Params:
     for race, shifts in (yaml.safe_load(raw_b) or {}).get("mu_shift", {}).items():
         for trait, v in shifts.items():
             mu[RACES.index(race), TRAITS.index(trait)] += float(v)
+    for race, kv in (yaml.safe_load(raw_b) or {}).get("life_history", {}).items():
+        r["life_history"][race].update(kv)
     g = dict(d["genetics"])
     demo = dict(d["demography"])
     if overrides:
@@ -93,6 +96,7 @@ def load_params(overrides: dict | None = None) -> Params:
         timescale=np.array([r["life_history"][x]["timescale"] for x in RACES], float),
         decline_mult=np.array([r["life_history"][x]["decline_mult"] for x in RACES], float),
         learn_window=np.array([r["life_history"][x]["learn_window"] for x in RACES], float),
+        wisdom=np.array([r["life_history"][x].get("wisdom", 0.0) for x in RACES], float),
         league=dict(d["league"]), dev=dict(d["development"]), injury=dict(d["injury"]),
         n_eff=g["n_eff"], heterosis_coef=g["heterosis_coef"],
         outbreeding_dep_coef=g["outbreeding_dep_coef"], hybrid_fert_k=g["hybrid_fert_k"],

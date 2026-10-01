@@ -64,6 +64,7 @@ def new_state(person: Person, age: int, P: Params, rng: np.random.Generator, ref
     ath = np.array([-aging.remaining_growth(t, ae) for t in aging.ATHLETIC])
     ath = ath + rng.normal(0.0, P.dev["ath_noise"], size=4)
     target = z[_SKILL_IDX] + P.dev["skill_ceiling_z"]
+    target[1:] += learning.wisdom_bonus(age, race, P)          # vision and temperament: experience already lived
     gap = learning.initial_gap(ae, P)
     z_h = (units[TRAIT_IDX["height"]] - mu[TRAIT_IDX["height"]]) / sd[TRAIT_IDX["height"]]   # within own population
     z_res = (units[TRAIT_IDX["injury_res"]] - ref.mu[TRAIT_IDX["injury_res"]]) / ref.sd[TRAIT_IDX["injury_res"]]
@@ -77,6 +78,8 @@ def develop_year(st: PlayerState, age: int, P: Params, rng: np.random.Generator)
     """Advance one year of development (age is the age at the start of the year)."""
     ae = aging.age_eff(age, st.race, P)
     st.ath_dev = aging.athletic_step(st.ath_dev, ae, P.decline_mult[st.race], rng, P.dev["ath_noise"])
+    gain = learning.wisdom_bonus(age + 1, st.race, P) - learning.wisdom_bonus(age, st.race, P)
+    st.skill_target[1:] += gain                                 # a year of experience raises the court-sense ceiling
     lr = float(st.base_units[TRAIT_IDX["learning"]])
     st.skill_z = learning.skill_step(st.skill_z, st.skill_target, lr, age, ae, st.race, rng, P)
 

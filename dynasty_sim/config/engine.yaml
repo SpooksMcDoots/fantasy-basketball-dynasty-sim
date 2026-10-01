@@ -27,9 +27,10 @@ params:
   steal_share: 0.59
   steal_slope: 0.4
   # shot selection
-  usage_touch: 0.6
+  usage_touch: 0.9
   usage_vision: 0.4
   usage_temper: 0.3
+  usage_size: 0.80       # shot-share weight from size and strength (the rebounding rating): a giant gets post touches whatever his touch
   usage_sat: 1.2         # shot-share weight = exp(sat * tanh(x / sat)): even a great shooter cannot take every shot
   tau: 0.12
   # make probabilities
@@ -56,6 +57,8 @@ params:
   c_off_three: -0.5
   # shooting skill has diminishing returns, and heavy usage costs efficiency (defences load up on a star)
   touch_sat: 2.5         # SD at which extra shooting skill stops adding to make probability and free-throw %
+  usage_hi: 2.0          # above this on-court shot share (2.0 = 40% of the shots while he plays) the cost steepens
+  usage_cost_hi: 1.0     # extra make-logit cost per unit of on-court share above usage_hi: the volume ceiling for one-man offences
   usage_cost: 0.10       # make-logit cost per unit of shot share above an equal split (1.0 = 20% of the shots)
   # foul drawing: strength (post play, contact) plus the shooter's own quickness and handling (drives)
   sf_drive: 0.15         # shooting-foul logit per unit of handling rating, on rim and mid-range shots

@@ -4,6 +4,10 @@ A retired career is scored as the average of three standardised parts, so a long
   * career value      total points added over replacement (rewards longevity)
   * best-five value   the five best seasons added together (rewards peak)
   * honours           awards and titles won as a core player (rewards how the player was seen and what he won)
+
+Each part is standardised against the career's own role (guard, forward or center, by height), so a center is judged
+against centers and a guard against guards. Box value is not comparable across roles (a center's rebounds and blocks
+score very differently from a guard's assists), and pooling them filled the Hall with whichever role the formula favours.
 """
 from __future__ import annotations
 
@@ -16,6 +20,7 @@ MIN_RETIRED_FOR_FLOOR = 20
 FLOOR_QUANTILE = 0.70           # among retired careers with enough seasons
 DYNASTY_TITLES = 3              # titles won during a head's tenure to earn the contributor wing
 PEAK_SEASONS = 5
+MIN_GROUP = 8                   # a role with fewer retired careers than this is standardised against everyone
 TITLE_POINTS = 3
 HONOUR_POINTS = {"MVP": 10, "Finals MVP": 4, "Defensive Player": 4, "Scoring Champion": 3, "All-League": 3,
                  "Rookie of the Year": 1, "Most Improved": 1}
@@ -34,14 +39,25 @@ def _z(values: np.ndarray) -> np.ndarray:
     return (values - values.mean()) / sd if sd > 0 else np.zeros_like(values)
 
 
-def score_careers(careers: list, titles: dict) -> dict[int, dict]:
-    """pid -> {career, peak, honours, score}: the score is the mean of the three standardised parts."""
+def _z_by_role(values: np.ndarray, roles: list) -> np.ndarray:
+    """Standardise within each role that has enough members; everyone else against the whole pool."""
+    out = _z(values)
+    for role in {r for r in roles if r is not None}:
+        idx = np.array([i for i, r in enumerate(roles) if r == role])
+        if len(idx) >= MIN_GROUP:
+            out[idx] = _z(values[idx])
+    return out
+
+
+def score_careers(careers: list, titles: dict, roles: dict | None = None) -> dict[int, dict]:
+    """pid -> {career, peak, honours, score, role}: the score is the mean of the three role-relative standardised parts."""
     if not careers:
         return {}
     parts = np.array([[c.career_value(), peak_value(c), honour_points(c, titles)] for c in careers])
-    z = np.column_stack([_z(parts[:, i]) for i in range(3)])
-    return {c.pid: {"career": float(p[0]), "peak": float(p[1]), "honours": float(p[2]), "score": float(zs.mean())}
-            for c, p, zs in zip(careers, parts, z)}
+    role_list = [(roles or {}).get(c.pid) for c in careers]
+    z = np.column_stack([_z_by_role(parts[:, i], role_list) for i in range(3)])
+    return {c.pid: {"career": float(p[0]), "peak": float(p[1]), "honours": float(p[2]), "score": float(zs.mean()), "role": r}
+            for c, p, zs, r in zip(careers, parts, z, role_list)}
 
 
 class HallOfFame:
@@ -51,11 +67,11 @@ class HallOfFame:
         self.builders: dict[int, tuple] = {}       # pid -> (year, house_id, titles)
         self._budget = 0.0
 
-    def inductees_this_year(self, year: int, careers: dict, titles: dict | None = None) -> list[int]:
+    def inductees_this_year(self, year: int, careers: dict, titles: dict | None = None, roles: dict | None = None) -> list[int]:
         """Pick this season's player inductees: best-scoring eligible careers, paced to the target rate."""
         self._budget = min(self._budget + RATE_PER_SEASON, 2.5)
         retired = [c for c in careers.values() if c.retired_year is not None and len(c.seasons) >= MIN_SEASONS]
-        scores = score_careers(retired, titles or {})
+        scores = score_careers(retired, titles or {}, roles)
         floor = (float(np.quantile([v["score"] for v in scores.values()], FLOOR_QUANTILE))
                  if len(retired) >= MIN_RETIRED_FOR_FLOOR else float("inf"))
         cands = sorted((c for c in retired if year - c.retired_year >= WAIT_YEARS and c.pid not in self.players

@@ -86,11 +86,12 @@ def render_hof(r) -> str:
     led = r.ledger
     out = ["# Hall of Fame", "",
            "A retired career is scored as the average of three standardised parts: total value, the best five seasons, and "
-           "honours (awards and titles). Longevity alone is not enough.", "",
-           "## Players", "", "| Class | Player | Race | Seasons | Career value | Best 5 | Honours |", "|---:|---|---|---:|---:|---:|---:|"]
+           "honours (awards and titles). Each part is measured against players of the same role (guard, forward or center, "
+           "by height), so a center is compared with centers. Longevity alone is not enough.", "",
+           "## Players", "", "| Class | Player | Race | Role | Seasons | Career value | Best 5 | Honours |", "|---:|---|---|---|---:|---:|---:|---:|"]
     for pid, year in sorted(led.hof.players.items(), key=lambda kv: (kv[1], kv[0])):
         c, rec = led.careers[pid], led.hof.record[pid]
-        out.append(f"| {year} | {r.p(pid)} | {r.race_name(pid)} | {len(c.seasons)} | {rec['career']:.0f} | {rec['peak']:.0f} | {rec['honours']:.0f} |")
+        out.append(f"| {year} | {r.p(pid)} | {r.race_name(pid)} | {rec.get('role') or '—'} | {len(c.seasons)} | {rec['career']:.0f} | {rec['peak']:.0f} | {rec['honours']:.0f} |")
     out += ["", "## Dynasty builders", ""]
     if led.hof.builders:
         out += ["| Class | Head | House | Titles |", "|---:|---|---|---:|"]

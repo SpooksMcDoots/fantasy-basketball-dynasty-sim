@@ -63,6 +63,35 @@ Every link in the Markdown resolves to a file that exists; the exporter checks t
 
 To draw a family tree: `dot -Tsvg runs/demo/history/houses/7.dot -o house7.svg` (needs [Graphviz](https://graphviz.org)).
 
+## Browse the history
+
+```bash
+.venv/Scripts/python -m dynasty_sim.cli view
+```
+
+Opens a local page (standard library server, 127.0.0.1 only) with eight tabs:
+
+| Tab | What it shows |
+|---|---|
+| **Dynasties** | every team's result in every season as one strip, plus a title table and house pages |
+| **Seasons** | standings, playoff bracket, deciding game and awards for any year |
+| **Players** | search, career tables, a value-added chart, family and ancestry |
+| **Races** | share of games, pro roster slots and population by ancestry, hybrids by generation, how each group has done |
+| **Records** | the record book by race, with the history of each record |
+| **Rivalries** | a heatmap of the rivalry index between houses, the index over time, and what fuelled each rivalry |
+| **Hall of Fame** | inductees (sortable), dynasty builders, all-time career and season leaders, honours, team lists, filterable by ancestry |
+| **League health** | the stability alarms, best-team margin, title concentration, balance, inbreeding, trait drift and decade tables |
+
+A side feed follows what you are looking at: the league, one season, one player or one house, or the events that belong to
+the current tab. From the page you can load a saved run or start a new one (seed, seasons, 4 or 8 teams); new runs are
+saved under `runs/viewer_s<seed>_y<years>_t<teams>/`. Runs saved by an earlier version of the viewer still load, but the
+newer tabs ask you to re-run.
+
+Every `run` also writes `viewer.json` (the saved run) and `viewer.html` (the same page with that run embedded; open it
+by double-click, no server needed). Without the launcher the page can still load any `viewer.json` with its
+**Load run…** button or by drag and drop; only starting a new simulation needs `view`. Options: `--runs DIR`, `--load
+runs/x/viewer.json`, `--port N`, `--no-browser`.
+
 ## Run many worlds at once
 
 ```bash
@@ -165,19 +194,31 @@ Each is recorded where it lives; the short list:
   pairing at nearly the same level.
 - **Validation clause** "Human-majority seasons inside the table" is read per table row (average at least 90%), since the
   table's own midpoints cannot all hold at once.
+- **Development identity:** Humans are quick studies (learning mean 1.15, growth window 19-26) and Elves slow burners
+  (0.80, window 30-45). In the spec table Elves out-learned Humans inside the league. A new `wisdom` rate raises the
+  vision and temperament ceiling with every year lived past adulthood (capped at 1 SD), so long-lived Elves lead late.
+  See `config/races_balance.yaml`.
+- **Size earns touches** (`usage_size`): shot share also rises with size and strength, so a giant with poor touch still gets
+  post possessions. Goliath regulars score about 10 ppg (their best 5% about 19) instead of 5-7. Shots are zero-sum, so
+  league scoring leaders average about 24 ppg in mixed worlds (Human-only calibration leagues still land in the table).
+- **MVP** blends season value (0.5), points per game (0.3) and team winning percentage (0.2), all standardised, so a
+  low-usage specialist no longer wins on box value alone.
+- **All-League** is a lineup (two guards, two forwards, one center, by height third), not the five best box scores.
 - **Hybrid fertility** is milder than the spec default: `hybrid_fert_k` 1.0 (spec 2.0, allowed 1-3) and `p_cross_race` 0.15
   (spec 0.08). At the spec values only 0.1% of people were hybrids; now about 0.7%, with F2 lines and the occasional star.
 - **Scoring realism:** shooting skill has diminishing returns (`touch_sat`), heavy usage costs efficiency (`usage_cost`),
   and free throws are drawn by strength (post play, saturating) and by handling on drives (`sf_drive`, twos only).
   Late in close games the defence fouls the worst free-throw shooter on the floor (`hack_p`, `hack_secs`, `hack_margin`).
 - **Hall of Fame** scores a retired career as the mean of three standardised parts: career value, best five seasons, and
-  honours (awards and titles). Longevity alone does not carry a player.
+  honours (awards and titles), each measured against players of the same role (guard, forward, center by height).
+  Longevity alone does not carry a player, and a center is compared with centers.
 - **Scouting** uses a value fitted to simulated winning contribution, not the engine's game rating.
 
 ## Known limits
 
-- Hall of Fame race mix follows the strength of each race's best players, so Goliaths and Elves are over-represented
-  relative to their share of eligible careers.
+- Hall of Fame role mix matches the pool of eligible careers, but race mix still follows each race's strength within a role:
+  in 100-year worlds about 19% Human, 47% Goliath and 34% Elf (pool 47/41/12). Centers are almost all Goliaths; Elves
+  out-produce Humans among guards and forwards.
 - Title concentration (one house over 40% of titles in 30 seasons) still trips in about 5% of seeds.
 - The Elf effect on three-point rate is positive but only barely resolved statistically.
 - The validation table's strictest reading (every row inside in the same season) holds in only 30-40% of seasons.
