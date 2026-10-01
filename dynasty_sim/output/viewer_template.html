@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dynasty History Viewer</title>
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1f23; --muted: #6a6f78; --line: #dcdad2; --accent: #2f5d8a;
+  --gold: #d9a21b; --final: #4f7cac; --playoff: #a9c1da; --out: #e6e4dc; --good: #2d7d4f; --bad: #b24a3a;
+  --human: #4f7cac; --goliath: #b5642f; --elf: #3f8f6b; --hyb: #8a63b8; --sel: #fff6d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161a; --panel: #1d2026; --ink: #e6e7ea; --muted: #959ba6; --line: #343944; --accent: #7fb0e4;
+    --gold: #e8b73a; --final: #5f8fc2; --playoff: #35506d; --out: #272b33; --good: #5cc08a; --bad: #e0806f;
+    --human: #6f9fd0; --goliath: #d98652; --elf: #5fbf93; --hyb: #b393e0; --sel: #3a3318;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14161a; --panel: #1d2026; --ink: #e6e7ea; --muted: #959ba6; --line: #343944; --accent: #7fb0e4;
+  --gold: #e8b73a; --final: #5f8fc2; --playoff: #35506d; --out: #272b33; --good: #5cc08a; --bad: #e0806f;
+  --human: #6f9fd0; --goliath: #d98652; --elf: #5fbf93; --hyb: #b393e0; --sel: #3a3318;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+button, select, input { font: inherit; color: inherit; }
+button, select { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+input[type=text], input[type=number], input[type=search] { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+header { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 16px; margin: 0; } header .meta { color: var(--muted); font-size: 13px; flex: 1 1 200px; }
+header .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+#jobpill { display: none; font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--sel); border: 1px solid var(--gold); }
+nav.tabs { display: flex; gap: 2px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+nav.tabs a { padding: 9px 16px; color: var(--muted); border-bottom: 3px solid transparent; font-weight: 600; }
+nav.tabs a.on { color: var(--ink); border-bottom-color: var(--accent); text-decoration: none; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; padding: 16px; max-width: 1500px; margin: 0 auto; align-items: start; }
+@media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.card h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.card h3 { font-size: 15px; margin: 0 0 6px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.stat b { display: block; font-size: 20px; } .stat span { color: var(--muted); font-size: 12px; }
+table { border-collapse: collapse; width: 100%; } th, td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; } th:first-child, td:first-child, td.l, th.l { text-align: left; }
+tr.hl td { background: var(--sel); } .scroll { overflow-x: auto; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; border: 1px solid var(--line); }
+.chip.champ { background: var(--gold); color: #1d1f23; border-color: var(--gold); } .chip.final { background: var(--final); color: #fff; border-color: var(--final); }
+.chip.playoff { background: var(--playoff); } .chip.hof { background: var(--gold); color: #1d1f23; border-color: var(--gold); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; } .r0 { background: var(--human); } .r1 { background: var(--goliath); } .r2 { background: var(--elf); }
+/* dynasty strip */
+.strip { overflow-x: auto; padding-bottom: 6px; } .strip-inner { min-width: 720px; }
+.srow { display: flex; align-items: center; margin-bottom: 3px; } .srow.sel .slabel { background: var(--sel); border-radius: 4px; }
+.slabel { flex: 0 0 190px; padding: 2px 6px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slabel small { color: var(--muted); }
+.cells { flex: 1; display: grid; gap: 1px; } .cells i { display: block; height: 22px; background: var(--out); cursor: pointer; border-radius: 1px; }
+.cells i:hover { outline: 2px solid var(--ink); outline-offset: -1px; z-index: 1; }
+.res-champ { background: var(--gold) !important; } .res-final { background: var(--final) !important; } .res-playoff { background: var(--playoff) !important; }
+.axis { height: 16px; } .axis span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -2px; margin-right: 5px; background: var(--out); }
+#tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg); padding: 6px 9px; border-radius: 6px; font-size: 12px; display: none; z-index: 10; max-width: 260px; }
+/* seasons */
+.seasonbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; } .seasonbar input[type=range] { flex: 1; min-width: 160px; }
+.seasonbar .yr { font-size: 20px; font-weight: 700; min-width: 90px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; } .grid2 .card { margin-bottom: 0; }
+.awards li { margin: 3px 0; } .awards span.lab { color: var(--muted); display: inline-block; min-width: 128px; }
+.round h4 { margin: 8px 0 3px; font-size: 12px; color: var(--muted); text-transform: uppercase; } .round div { padding: 1px 0; }
+.win { font-weight: 700; } .lose { color: var(--muted); }
+/* players */
+.plist { list-style: none; margin: 0; padding: 0; } .plist li { padding: 5px 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; align-items: baseline; }
+.plist .sub { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+.subtabs { display: flex; gap: 6px; margin: 10px 0; } .subtabs button.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.bio { color: var(--muted); margin: 2px 0 10px; } .fam { margin: 4px 0; }
+.chart { width: 100%; height: auto; } .chart text { fill: var(--muted); font-size: 10px; }
+/* feed */
+.feed h2 { display: flex; justify-content: space-between; align-items: center; } .feed .filters { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; } .feed select { padding: 3px 6px; font-size: 12px; }
+.feed ul { list-style: none; margin: 0; padding: 0; max-height: 78vh; overflow-y: auto; }
+.feed li { padding: 6px 0 6px 12px; border-bottom: 1px solid var(--line); border-left: 3px solid var(--line); margin-bottom: 2px; font-size: 13px; }
+.feed li.m3 { border-left-color: var(--gold); } .feed li.m2 { border-left-color: var(--final); }
+.feed .y { font-weight: 700; margin-right: 4px; } .feed .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; display: block; }
+.empty { text-align: center; padding: 70px 20px; max-width: 560px; margin: 40px auto; } .empty h2 { text-transform: none; font-size: 22px; color: var(--ink); }
+.empty .row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.muted { color: var(--muted); }
+dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; width: min(420px, 92vw); }
+dialog::backdrop { background: rgba(0,0,0,.45); } dialog label { display: block; margin: 10px 0 3px; font-size: 12px; color: var(--muted); } dialog input, dialog select { width: 100%; }
+dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+code, pre { background: var(--out); border-radius: 5px; padding: 1px 5px; font-size: 12.5px; } pre { padding: 8px 10px; overflow-x: auto; }
+.bar { height: 8px; background: var(--out); border-radius: 4px; overflow: hidden; margin-top: 10px; } .bar i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.err { color: var(--bad); margin-top: 8px; }
+
+/* charts, heat tables, bars */
+.lchart { width: 100%; height: auto; display: block; } .lchart text { fill: var(--muted); font-size: 10px; } .lchart .grid { stroke: var(--line); stroke-width: 1; } .lchart .ref { stroke-dasharray: 4 3; }
+.lg { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 4px; } .lg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-bottom: 16px; } .cgrid .card { margin-bottom: 0; }
+@media (max-width: 480px) { .cgrid { grid-template-columns: minmax(0, 1fr); } }
+.heat td { text-align: center; font-variant-numeric: tabular-nums; } .heat td:first-child { text-align: left; }
+.stack { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: var(--out); min-width: 120px; } .stack i { display: block; height: 100%; }
+.alarm { padding: 6px 10px; border-left: 3px solid var(--bad); background: var(--out); margin: 4px 0; border-radius: 0 6px 6px 0; font-size: 13px; }
+.ok { color: var(--good); font-weight: 700; } .badtxt { color: var(--bad); font-weight: 700; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; } .pills button.on { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+th.sortable { cursor: pointer; } th.sortable:hover { color: var(--ink); }
+tr.pick { cursor: pointer; } tr.pick:hover td { background: var(--out); } tr.pick.on td { background: var(--sel); }
+.hm td.cell { text-align: center; cursor: pointer; min-width: 44px; } .hm td.cell:hover { outline: 2px solid var(--ink); }
+nav.tabs { flex-wrap: wrap; } nav.tabs a { padding: 9px 12px; }
+#drop { position: fixed; inset: 0; background: rgba(47,93,138,.25); display: none; align-items: center; justify-content: center; font-size: 24px; z-index: 20; pointer-events: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dynasty History Viewer</h1>
+  <div class="meta" id="meta">No run loaded</div>
+  <div class="actions">
+    <span id="jobpill"></span>
+    <select id="saved" title="Saved runs in the runs folder" style="display:none"></select>
+    <button id="btn-load">Load run…</button>
+    <button id="btn-new" class="primary">New run…</button>
+    <input type="file" id="file" accept=".json,application/json" hidden>
+  </div>
+</header>
+<nav class="tabs" id="tabs">
+  <a href="#/dynasty" data-tab="dynasty">Dynasties</a>
+  <a href="#/season" data-tab="season">Seasons</a>
+  <a href="#/players" data-tab="player">Players</a>
+  <a href="#/races" data-tab="races">Races</a>
+  <a href="#/records" data-tab="records">Records</a>
+  <a href="#/rivalries" data-tab="rivalries">Rivalries</a>
+  <a href="#/hof" data-tab="hof">Hall of Fame</a>
+  <a href="#/health" data-tab="health">League health</a>
+</nav>
+<div id="app"></div>
+<div id="tip"></div>
+<div id="drop">Drop a saved run (viewer.json) to load it</div>
+
+<dialog id="newdlg">
+  <h3 style="margin:0">Start a new run</h3>
+  <div id="newbody"></div>
+</dialog>
+
+<script>
+const EMBEDDED = __EMBEDDED_RUN__;
+
+/* ---------- helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fy = y => (y < 0 ? `${-y} BF` : String(y));
+const fl = (x, d = 1) => (x == null ? "—" : Number(x).toFixed(d));
+const push = (m, k, v) => { (m.get(k) || m.set(k, []).get(k)).push(v); };
+const RES_LABEL = { champ: "Champion", final: "Finalist", playoff: "Made playoffs", out: "Missed playoffs" };
+const IMP = ["minor", "notable", "major", "landmark"];
+const RCOL = ["var(--human)", "var(--goliath)", "var(--elf)", "var(--hyb)"];
+
+let D = null, X = null;                     // data and derived indexes
+let SERVER = false, jobTimer = null;
+
+/* ---------- loading ---------- */
+function init(data) {
+  if (!data || data.format !== "dynasty-viewer") throw new Error("That file is not a dynasty viewer run (expected viewer.json).");
+  D = data;
+  X = { year: new Map(D.years.map(y => [y.y, y])), evYear: new Map(), evPlayer: new Map(), evHouse: new Map(), team: new Map(D.teams.map(t => [t.id, t])) };
+  for (const e of D.events) { push(X.evYear, e.y, e); e.a.forEach(a => push(X.evPlayer, a, e)); e.h.forEach(h => push(X.evHouse, h, e)); }
+  X.kinds = [...new Set(D.events.map(e => e.k))].sort();
+  X.stats = D.teams.map(t => ({ t: t.id, titles: [], finals: 0, playoffs: 0, streak: 0 }));
+  for (const yr of D.years) {
+    for (const t of D.teams) {
+      const r = result(yr, t.id), s = X.stats[t.id];
+      if (r === "champ") s.titles.push(yr.y);
+      if (r === "champ" || r === "final") s.finals++;
+      if (r !== "out") s.playoffs++;
+    }
+  }
+  for (const s of X.stats) { let run = 0, best = 0, prev = null; for (const y of s.titles) { run = prev !== null && y === prev + 1 ? run + 1 : 1; best = Math.max(best, run); prev = y; } s.streak = best; }
+  X.players = Object.entries(D.players).filter(([, p]) => p.s).map(([id, p]) => ({ id: +id, p, first: p.s[0][0], last: p.s[p.s.length - 1][0] }));
+  X.champYears = new Map(D.years.map(y => [y.y, y.c]));
+  const m = D.meta;
+  $("#meta").textContent = `Seed ${m.seed} · years ${m.first_year}–${m.last_year} (${m.years} seasons) · ${m.teams} teams · ${m.people.toLocaleString()} people`;
+  route();
+}
+async function loadFile(file) {
+  try { init(JSON.parse(await file.text())); } catch (e) { toast(e.message); }
+}
+function toast(msg) { const a = $("#app"); a.insertAdjacentHTML("afterbegin", `<div class="card err" id="toast">${esc(msg)}</div>`); setTimeout(() => $("#toast")?.remove(), 6000); }
+
+/* ---------- lookups ---------- */
+const player = pid => D.players[pid];
+const pname = pid => player(pid)?.n ?? "Unknown";
+const plink = pid => `<a href="#/player/${pid}">${esc(pname(pid))}</a>`;
+const tname = t => X.team.get(t)?.name ?? `Team ${t}`;
+const hlink = hid => `<a href="#/dynasty/${hid}">${esc(D.houses[hid]?.n ?? "House " + hid)}</a>`;
+const tlink = t => `<a href="#/dynasty/${X.team.get(t)?.house}">${esc(tname(t))}</a>`;
+function result(yr, t) {
+  if (t === yr.c) return "champ";
+  if (t === yr.f) return "final";
+  return yr.series.some(s => s[0] === t || s[1] === t) ? "playoff" : "out";
+}
+function rich(text) {                       // narration arrives as Markdown links to players/houses
+  return esc(text).replace(/\[([^\]]+)\]\((players|houses)\/(\d+)\.md\)/g, (_, n, kind, id) =>
+    `<a href="#/${kind === "players" ? "player" : "dynasty"}/${id}">${n}</a>`);
+}
+function seasonRow(pid, year) { return player(pid)?.s?.find(r => r[0] === year); }
+
+/* ---------- routing ---------- */
+function parseRoute() {
+  const [, tab = "dynasty", arg] = location.hash.split("/");
+  return { tab: ["dynasty", "season", "player", "players", "races", "records", "rivalries", "hof", "health"].includes(tab) ? tab : "dynasty", arg: arg === undefined || arg === "" ? null : +arg };
+}
+function route() {
+  const app = $("#app");
+  if (!D) { app.innerHTML = emptyState(); bindEmpty(); markTab(null); return; }
+  const { tab, arg } = parseRoute();
+  markTab(tab === "players" ? "player" : tab);
+  let main = "", ctx;
+  if (tab === "dynasty") { main = dynastyPage(arg); ctx = { title: arg ? `${D.houses[arg]?.n ?? "House"} timeline` : "League feed", events: arg ? X.evHouse.get(arg) ?? [] : D.events, auto: arg ? 1 : 2 }; }
+  else if (tab === "season") {
+    const y = X.year.has(arg) ? arg : D.meta.last_year;
+    main = seasonPage(y); ctx = { title: `Year ${y}`, events: X.evYear.get(y) ?? [], auto: 1 };
+  } else if (NEW[tab]) {
+    main = NEW[tab].html(arg); ctx = NEW[tab].ctx(arg);
+  } else {
+    main = playersPage(arg); ctx = arg !== null && player(arg) ? { title: `${pname(arg)} timeline`, events: X.evPlayer.get(arg) ?? [], auto: 1 } : { title: "League feed", events: D.events, auto: 2 };
+  }
+  app.innerHTML = `<div class="layout"><main>${main}</main><aside class="feed card" id="feed"></aside></div>`;
+  feed = { ...ctx, limit: 80 };
+  renderFeed();
+  bindPage(tab, arg);
+  NEW[tab]?.bind?.(arg);
+}
+function markTab(t) { document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === t)); }
+
+/* ---------- feed ---------- */
+let feed = null, feedFilter = { imp: "auto", kind: "" };
+function renderFeed() {
+  const min = feedFilter.imp === "auto" ? feed.auto : +feedFilter.imp;
+  const evs = feed.events.filter(e => e.m >= min && (!feedFilter.kind || e.k === feedFilter.kind)).sort((a, b) => a.y - b.y || a.i - b.i);
+  const shown = evs.slice(0, feed.limit);
+  let lastY = null, items = "";
+  for (const e of shown) {
+    items += `<li class="m${e.m}"><span class="k">${esc(e.k.replace(/_/g, " "))} · ${IMP[e.m]}</span><a class="y" href="#/season/${e.y}">${fy(e.y)}</a> ${rich(e.t)}</li>`;
+  }
+  $("#feed").innerHTML = `<h2>${esc(feed.title)} <span class="muted" style="font-size:12px;text-transform:none">${evs.length} events</span></h2>
+    <div class="filters"><select id="f-imp"><option value="auto">Auto importance</option><option value="3">Landmark only</option><option value="2">Major +</option><option value="1">Notable +</option></select>
+    <select id="f-kind"><option value="">All kinds</option>${X.kinds.map(k => `<option value="${k}">${esc(k.replace(/_/g, " "))}</option>`).join("")}</select></div>
+    <ul>${items || '<li class="muted">Nothing at this importance level.</li>'}${evs.length > shown.length ? `<li><button id="f-more">Show ${Math.min(80, evs.length - shown.length)} more</button></li>` : ""}</ul>`;
+  $("#f-imp").value = feedFilter.imp; $("#f-kind").value = feedFilter.kind;
+  $("#f-imp").onchange = e => { feedFilter.imp = e.target.value; feed.limit = 80; renderFeed(); };
+  $("#f-kind").onchange = e => { feedFilter.kind = e.target.value; feed.limit = 80; renderFeed(); };
+  $("#f-more")?.addEventListener("click", () => { const ul = $("#feed ul"), top = ul.scrollTop; feed.limit += 80; renderFeed(); $("#feed ul").scrollTop = top; });
+}
+
+/* ---------- dynasties tab ---------- */
+function dynastyPage(selHouse) {
+  const n = D.years.length, st = X.stats;
+  const champs = new Set(D.years.map(y => y.c)).size, bestStreak = st.reduce((a, b) => (b.streak > a.streak ? b : a), st[0]);
+  const mostTitles = st.reduce((a, b) => (b.titles.length > a.titles.length ? b : a), st[0]);
+  let html = `<div class="stats">
+    <div class="stat"><b>${n}</b><span>seasons</span></div>
+    <div class="stat"><b>${champs} of ${D.teams.length}</b><span>teams that won a title</span></div>
+    <div class="stat"><b>${mostTitles.titles.length}</b><span>most titles: ${esc(tname(mostTitles.t))}</span></div>
+    <div class="stat"><b>${bestStreak.streak}</b><span>longest streak: ${esc(tname(bestStreak.t))}</span></div></div>`;
+  const axis = D.years.map(y => `<i style="background:none;cursor:default;height:16px">${y.y % 10 === 0 ? `<span>${y.y}</span>` : ""}</i>`).join("");
+  const rows = D.teams.map(t => {
+    const s = st[t.id], h = D.houses[t.house];
+    const cells = D.years.map(y => `<i class="res-${result(y, t.id)}" data-y="${y.y}" data-t="${t.id}"></i>`).join("");
+    return `<div class="srow${selHouse === t.house ? " sel" : ""}"><div class="slabel"><span class="dot r${h?.r ?? 0}"></span><a href="#/dynasty/${t.house}">${esc(t.name)}</a> <small>${s.titles.length}</small></div><div class="cells" style="grid-template-columns:repeat(${n},minmax(5px,1fr))">${cells}</div></div>`;
+  }).join("");
+  html += `<div class="card"><h2>Every season at a glance</h2><div class="strip"><div class="strip-inner">${rows}
+    <div class="srow"><div class="slabel"></div><div class="cells axis" style="grid-template-columns:repeat(${n},minmax(5px,1fr))">${axis}</div></div></div></div>
+    <div class="legend"><span><i style="background:var(--gold)"></i>Champion</span><span><i style="background:var(--final)"></i>Finalist</span><span><i style="background:var(--playoff)"></i>Playoffs</span><span><i></i>Missed</span>
+    <span><span class="dot r0"></span>Human <span class="dot r1"></span>Goliath <span class="dot r2"></span>Elf house</span><span>Click a block to open that season. Number after a team is its titles.</span></div></div>`;
+  if (selHouse && D.houses[selHouse]) html += housePanel(selHouse);
+  const order = [...st].sort((a, b) => b.titles.length - a.titles.length || b.finals - a.finals);
+  html += `<div class="card"><h2>Title table</h2><div class="scroll"><table><tr><th class="l">Team</th><th>Titles</th><th>Best streak</th><th>Finals</th><th>Playoffs</th><th>Playoff rate</th></tr>` +
+    order.map(s => `<tr${D.teams[s.t].house === selHouse ? ' class="hl"' : ""}><td class="l">${tlink(s.t)}</td><td>${s.titles.length}</td><td>${s.streak}</td><td>${s.finals}</td><td>${s.playoffs}</td><td>${Math.round(100 * s.playoffs / n)}%</td></tr>`).join("") + `</table></div></div>`;
+  return html;
+}
+function housePanel(hid) {
+  const h = D.houses[hid], s = h.team != null ? X.stats[h.team] : null;
+  const raceName = D.races[h.r];
+  return `<div class="card"><h3><span class="dot r${h.r}"></span>${esc(h.n)}</h3>
+    <div class="bio">${esc(raceName)} house, founded year ${fy(h.fo)}${h.ex != null ? `; died out in year ${h.ex}` : ""}. Team: ${h.team != null ? esc(tname(h.team)) : "—"}.</div>
+    ${s && s.titles.length ? `<div>Titles: ${s.titles.map(y => `<a href="#/season/${y}">${y}</a>`).join(", ")}</div>` : '<div class="muted">No titles.</div>'}</div>`;
+}
+
+/* ---------- seasons tab ---------- */
+const AWARD_LABEL = [["mvp", "MVP"], ["finals_mvp", "Finals MVP"], ["dpoy", "Defensive Player"], ["roy", "Rookie of the Year"], ["scoring", "Scoring Champion"], ["most_improved", "Most Improved"]];
+function roundName(r, n) { const k = n - 1 - r; return ["Finals", "Semifinals", "Quarterfinals"][k] ?? `Round ${r + 1}`; }
+function seasonPage(y) {
+  const yr = X.year.get(y), i = D.years.indexOf(yr);
+  const order = D.teams.map(t => t.id).sort((a, b) => yr.w[b] - yr.w[a] || yr.mov[b] - yr.mov[a]);
+  const nr = yr.series.length ? Math.max(...yr.series.map(s => s[3])) + 1 : 0;
+  const seed = t => { const k = yr.seeds.indexOf(t); return k < 0 ? "" : `(${k + 1}) `; };
+  let html = `<div class="seasonbar"><button id="prev" ${i === 0 ? "disabled" : ""}>◀</button><span class="yr">Year ${y}</span><button id="next" ${i === D.years.length - 1 ? "disabled" : ""}>▶</button>
+    <input type="range" id="yslider" min="${D.meta.first_year}" max="${D.meta.last_year}" value="${y}"></div>`;
+  const fin = yr.fin ? ` Deciding game: ${esc(tname(yr.fin.teams[0]))} ${yr.fin.score[0]}, ${esc(tname(yr.fin.teams[1]))} ${yr.fin.score[1]}.` : "";
+  html += `<div class="card"><h3>${tlink(yr.c)} <span class="chip champ">Champion</span></h3>
+    <div class="muted">Beat ${tlink(yr.f)} in the finals. House: ${hlink(X.team.get(yr.c).house)}.${fin}</div></div>`;
+  html += `<div class="grid2"><div class="card"><h2>Standings</h2><div class="scroll"><table><tr><th class="l">Team</th><th>W</th><th>L</th><th>MOV</th><th class="l">Result</th></tr>` +
+    order.map(t => { const r = result(yr, t); return `<tr${r === "champ" ? ' class="hl"' : ""}><td class="l">${tlink(t)}</td><td>${yr.w[t]}</td><td>${yr.l[t]}</td><td>${yr.mov[t] > 0 ? "+" : ""}${fl(yr.mov[t])}</td><td class="l"><span class="chip ${r}">${RES_LABEL[r]}</span></td></tr>`; }).join("") + `</table></div></div>`;
+  let br = "";
+  for (let r = 0; r < nr; r++) {
+    br += `<div class="round"><h4>${roundName(r, nr)}</h4>` + yr.series.filter(s => s[3] === r).map(([hi, lo, w]) => {
+      const cls = t => (t === w ? "win" : "lose");
+      return `<div><span class="${cls(hi)}">${seed(hi)}${esc(tname(hi))}</span> vs <span class="${cls(lo)}">${seed(lo)}${esc(tname(lo))}</span></div>`;
+    }).join("") + `</div>`;
+  }
+  html += `<div class="card"><h2>Playoffs</h2>${br || '<div class="muted">No playoff data.</div>'}</div></div><div style="height:16px"></div>`;
+  const line = (pid) => { const r = seasonRow(pid, y); return `${plink(pid)} <span class="muted">${r ? `${esc(tname(r[2]))} · ${fl(r[5])} pts, ${fl(r[6])} reb, ${fl(r[7])} ast` : ""}</span>`; };
+  const aw = yr.aw ?? {};
+  html += `<div class="card"><h2>Awards</h2><ul class="awards" style="list-style:none;margin:0;padding:0">` +
+    AWARD_LABEL.filter(([k]) => aw[k] != null).map(([k, lab]) => `<li><span class="lab">${lab}</span>${line(aw[k])}</li>`).join("") +
+    (aw.all_league ? `<li><span class="lab">All-League first team</span></li>${aw.all_league.map(p => `<li style="margin-left:128px">${line(p)}</li>`).join("")}` : "") + `</ul></div>`;
+  return html;
+}
+
+/* ---------- players tab ---------- */
+let pq = "", plist = "hof";
+function playersPage(pid) {
+  const search = `<div class="card" style="padding:10px 14px"><input type="search" id="psearch" placeholder="Search players by name…" value="${esc(pq)}" style="width:100%"></div>`;
+  if (pid !== null && player(pid)) return search + playerPage(pid);
+  return search + `<div id="plists"></div>`;
+}
+function plistRow(e) {
+  const p = e.p, hof = p.hof != null ? ' <span class="chip hof">HOF</span>' : "";
+  return `<li><span class="dot r${p.r}"></span>${plink(e.id)}${hof}<span class="sub">${fy(e.first)}–${fy(e.last)} · value ${fl(p.cv, 0)}</span></li>`;
+}
+function renderPlayerLists() {
+  const q = pq.trim().toLowerCase(), box = $("#plists");
+  if (!box) return;
+  if (q) {
+    const hits = X.players.filter(e => e.p.n.toLowerCase().includes(q)).sort((a, b) => b.p.cv - a.p.cv);
+    box.innerHTML = `<div class="card"><h2>${hits.length} match${hits.length === 1 ? "" : "es"}</h2><ul class="plist">${hits.slice(0, 60).map(plistRow).join("")}</ul>${hits.length > 60 ? '<div class="muted">Showing the first 60; refine the search.</div>' : ""}</div>`;
+    return;
+  }
+  const lists = {
+    hof: X.players.filter(e => e.p.hof != null).sort((a, b) => b.p.hof - a.p.hof),
+    top: [...X.players].sort((a, b) => b.p.cv - a.p.cv).slice(0, 50),
+    recent: [...X.players].filter(e => e.last === D.meta.last_year).sort((a, b) => b.p.cv - a.p.cv).slice(0, 50),
+  };
+  const titles = { hof: `Hall of Fame (${lists.hof.length}, newest class first)`, top: "Top 50 careers by value added", recent: "Active this season, by career value" };
+  box.innerHTML = `<div class="subtabs">${[["hof", "Hall of Fame"], ["top", "Top careers"], ["recent", "Active now"]].map(([k, l]) => `<button data-l="${k}" class="${plist === k ? "on" : ""}">${l}</button>`).join("")}</div>
+    <div class="card"><h2>${titles[plist]}</h2><ul class="plist">${lists[plist].map(plistRow).join("") || '<li class="muted">None yet.</li>'}</ul></div>`;
+  box.querySelectorAll("[data-l]").forEach(b => b.onclick = () => { plist = b.dataset.l; renderPlayerLists(); });
+}
+function playerPage(pid) {
+  const p = player(pid), champs = X.champYears;
+  const badges = `${p.hof != null ? `<span class="chip hof">Hall of Fame ${p.hof}</span> ` : ""}${p.hy ? '<span class="chip">Hybrid</span> ' : ""}`;
+  const fam = [];
+  if (p.m != null) fam.push(`Mother: ${plink(p.m)}`); if (p.f != null) fam.push(`Father: ${plink(p.f)}`);
+  let html = `<div class="card"><h3><span class="dot r${p.r}"></span>${esc(p.n)} ${badges}</h3>
+    <div class="bio">${esc(D.races[p.r])} · born ${fy(p.b)}${p.d != null ? `, died ${fy(p.d)}` : ""}${p.h != null && D.houses[p.h] ? ` · house ${hlink(p.h)}` : ""}${p.ret != null ? ` · retired ${p.ret}` : ""}</div>
+    ${fam.length ? `<div class="fam">${fam.join(" · ")}</div>` : ""}${p.k.length ? `<div class="fam">Children: ${p.k.map(plink).join(", ")}</div>` : ""}
+    ${p.an ? `<div class="fam" style="max-width:340px">Ancestry: ${esc(ancText(p))}${stackBar(p.an, RCOL)}</div>` : ""}
+    ${p.ex ? `<div class="fam muted">Congenital traits: ${esc(p.ex.join(", "))}</div>` : ""}</div>`;
+  if (!p.s) return html + `<div class="card muted">Never played in the league.</div>`;
+  const awByYear = new Map(); (p.aw ?? []).forEach(([y, a]) => { if (a !== "Hall of Fame") push(awByYear, y, a); });
+  let tg = 0, tp = 0, tr = 0, ta = 0, ts = 0, tb = 0, tm = 0, tv = 0;
+  const rows = p.s.map(r => {
+    const [y, age, t, g, mpg, ppg, rpg, apg, spg, bpg, v] = r;
+    tg += g; tm += mpg * g; tp += ppg * g; tr += rpg * g; ta += apg * g; ts += spg * g; tb += bpg * g; tv += v;
+    const notes = [...(champs.get(y) === t ? ["Champion"] : []), ...(awByYear.get(y) ?? [])].join(", ");
+    return `<tr><td><a href="#/season/${y}">${y}</a></td><td>${age}</td><td class="l">${esc(tname(t))}</td><td>${g}</td><td>${fl(mpg)}</td><td>${fl(ppg)}</td><td>${fl(rpg)}</td><td>${fl(apg)}</td><td>${fl(spg)}</td><td>${fl(bpg)}</td><td>${fl(v)}</td><td class="l muted">${esc(notes)}</td></tr>`;
+  }).join("");
+  const per = x => fl(x / Math.max(tg, 1));
+  html += `<div class="card"><h2>Value added by season</h2>${valueChart(p)}</div>
+    <div class="card"><h2>Career</h2><div class="scroll"><table><tr><th>Year</th><th>Age</th><th class="l">Team</th><th>G</th><th>MPG</th><th>PPG</th><th>RPG</th><th>APG</th><th>SPG</th><th>BPG</th><th>Value</th><th class="l">Notes</th></tr>${rows}
+    <tr style="font-weight:700"><td>Career</td><td></td><td></td><td>${tg}</td><td>${per(tm)}</td><td>${per(tp)}</td><td>${per(tr)}</td><td>${per(ta)}</td><td>${per(ts)}</td><td>${per(tb)}</td><td>${fl(tv)}</td><td></td></tr></table></div></div>`;
+  const honours = (p.aw ?? []);
+  if (honours.length) html += `<div class="card"><h2>Honours</h2>${honours.map(([y, a]) => `<span class="chip" style="margin:2px">${y} · ${esc(a)}</span>`).join("")}</div>`;
+  return html;
+}
+function valueChart(p) {
+  const rows = p.s, W = Math.max(rows.length * 34 + 50, 300), H = 150, pad = 28, base = H - pad;
+  const vals = rows.map(r => r[10]), hi = Math.max(1, ...vals), lo = Math.min(0, ...vals), span = hi - lo || 1;
+  const yv = v => 8 + (base - 8) * (hi - v) / span, bw = 22;
+  let g = `<line x1="40" x2="${W}" y1="${yv(0)}" y2="${yv(0)}" stroke="var(--line)"/><text x="4" y="${yv(0) + 3}">0</text><text x="4" y="${yv(hi) + 8}">${fl(hi, 0)}</text>`;
+  if (lo < 0) g += `<text x="4" y="${yv(lo)}">${fl(lo, 0)}</text>`;
+  rows.forEach((r, i) => {
+    const x = 46 + i * 34, champ = X.champYears.get(r[0]) === r[2], y0 = yv(0), y1 = yv(r[10]);
+    g += `<rect x="${x}" y="${Math.min(y0, y1)}" width="${bw}" height="${Math.max(Math.abs(y1 - y0), 1)}" rx="2" fill="${champ ? "var(--gold)" : r[10] < 0 ? "var(--bad)" : "var(--accent)"}"><title>${r[0]} (age ${r[1]}): ${fl(r[10])} value, ${fl(r[5])} ppg${champ ? " — champion" : ""}</title></rect><text x="${x + bw / 2}" y="${H - 14}" text-anchor="middle">${r[1]}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" style="max-width:${W * 1.6}px"><g>${g}</g><text x="${W / 2}" y="${H - 2}" text-anchor="middle">age · gold = played for the champion</text></svg>`;
+}
+
+/* ---------- shared: charts and small widgets ---------- */
+const CW = 640, CL = 46, CR = 12;
+const CH = new Map(); let chN = 0, tipOwner = null;
+const autoFmt = v => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 10 ? v.toFixed(1) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toFixed(3));
+const pctFmt = v => (100 * v).toFixed(0) + "%";
+function chart(o) {
+  const id = ++chN; CH.set(id, o);
+  const H = o.h || 180, T = 8, B = 22, xs = o.xs, n = xs.length, fmt = o.fmt || autoFmt;
+  const px = i => CL + (n > 1 ? i / (n - 1) : 0.5) * (CW - CL - CR);
+  let lo = 0, hi = 1, stacks = null;
+  if (o.kind === "area") {
+    stacks = o.series.map((_, k) => xs.map((__, i) => o.series.slice(0, k + 1).reduce((a, s) => a + (s.data[i] ?? 0), 0)));
+  } else {
+    const vals = o.series.flatMap(s => s.data.filter(v => v != null)).concat((o.hlines ?? []).map(h => h.y));
+    lo = o.yMin ?? Math.min(...vals, o.zero ? 0 : Infinity); hi = o.yMax ?? Math.max(...vals, o.zero ? 0 : -Infinity);
+    if (!isFinite(lo) || !isFinite(hi)) { lo = 0; hi = 1; }
+    if (hi === lo) { hi = lo + 1; }
+    const floorZero = o.zero && lo >= 0;
+    if (o.yMin == null && !floorZero) lo -= (hi - lo) * 0.06;
+    if (o.yMax == null) hi += (hi - lo) * 0.06;
+  }
+  const y = v => T + (H - T - B) * (hi - v) / (hi - lo);
+  let g = "";
+  for (let k = 0; k <= 4; k++) { const v = lo + (hi - lo) * k / 4; g += `<line class="grid" x1="${CL}" x2="${CW - CR}" y1="${y(v)}" y2="${y(v)}"/><text x="${CL - 5}" y="${y(v) + 3}" text-anchor="end">${fmt(v)}</text>`; }
+  const step = Math.max(1, Math.floor((n - 1) / 6));
+  for (let i = 0; i < n; i += step) g += `<text x="${px(i)}" y="${H - 6}" text-anchor="middle">${xs[i]}</text>`;
+  if (o.kind === "area") {
+    o.series.forEach((s, k) => {
+      const top = xs.map((_, i) => `${px(i).toFixed(1)} ${y(stacks[k][i]).toFixed(1)}`);
+      const bot = xs.map((_, i) => `${px(i).toFixed(1)} ${y(k ? stacks[k - 1][i] : 0).toFixed(1)}`).reverse();
+      g += `<path d="M${top.join("L")}L${bot.join("L")}Z" fill="${s.color}" opacity=".85"/>`;
+    });
+  } else {
+    for (const h of o.hlines ?? []) g += `<line class="ref" x1="${CL}" x2="${CW - CR}" y1="${y(h.y)}" y2="${y(h.y)}" stroke="${h.color || "var(--bad)"}"/><text x="${CW - CR}" y="${y(h.y) - 3}" text-anchor="end" style="fill:${h.color || "var(--bad)"}">${esc(h.label || "")}</text>`;
+    for (const s of o.series) {
+      let d = "", pen = false;
+      s.data.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? "L" : "M"}${px(i).toFixed(1)} ${y(v).toFixed(1)}`; pen = true; });
+      g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w || 1.8}"${s.dash ? ` stroke-dasharray="${s.dash}"` : ""} stroke-linejoin="round"/>`;
+    }
+  }
+  g += `<line class="xh" y1="${T}" y2="${H - B}" stroke="var(--ink)" stroke-width="1" style="display:none"/>`;
+  const lg = `<div class="lg">${o.series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div>`;
+  return `${lg}<svg class="lchart" data-ch="${id}" viewBox="0 0 ${CW} ${H}">${g}</svg>`;
+}
+document.addEventListener("mousemove", e => {
+  const svg = e.target.closest?.("svg.lchart"), tip = $("#tip");
+  if (!svg) { if (tipOwner === "chart") { tip.style.display = "none"; tipOwner = null; } return; }
+  const o = CH.get(+svg.dataset.ch); if (!o) return;
+  const rect = svg.getBoundingClientRect(), n = o.xs.length, fmt = o.tipFmt || o.fmt || autoFmt;
+  const x = (e.clientX - rect.left) / rect.width * CW, i = Math.max(0, Math.min(n - 1, Math.round((x - CL) / (CW - CL - CR) * (n - 1))));
+  const xh = svg.querySelector(".xh"), cx = CL + (n > 1 ? i / (n - 1) : 0.5) * (CW - CL - CR);
+  xh.setAttribute("x1", cx); xh.setAttribute("x2", cx); xh.style.display = "";
+  tip.innerHTML = `<b>${esc(o.xs[i])}</b>` + o.series.filter(s => s.data[i] != null).map(s => `<br><span style="color:${s.color === "var(--ink)" ? "inherit" : s.color};filter:brightness(1.3)">■</span> ${esc(s.name)}: ${fmt(s.data[i])}`).join("");
+  tip.style.display = "block"; tip.style.left = Math.min(e.clientX + 14, innerWidth - 270) + "px"; tip.style.top = e.clientY + 14 + "px"; tipOwner = "chart";
+});
+const noData = what => `<div class="card"><h3>No ${esc(what)} data in this run</h3><div class="muted">This saved run was written before that view existed. Re-run the simulation (or start a new run) and it will appear.</div></div>`;
+const heat = z => { const a = Math.min(Math.abs(z) / 1.2, 1) * 0.55; return z >= 0 ? `rgba(79,124,172,${a})` : `rgba(181,100,47,${a})`; };
+const shortHouse = h => (D.houses[h]?.n ?? "House " + h).replace(/^House /, "");
+const g2 = v => String(+Number(v).toFixed(2));
+function rerender() { const y = scrollY; route(); scrollTo(0, y); }
+const pills = (items, cur, attr) => `<div class="pills">${items.map(([k, l]) => `<button data-${attr}="${k}" class="${String(cur) === String(k) ? "on" : ""}">${esc(l)}</button>`).join("")}</div>`;
+function onPills(attr, set) { document.querySelectorAll(`main [data-${attr}]`).forEach(b => b.addEventListener("click", () => { set(b.dataset[attr]); rerender(); })); }
+const gini = counts => { const x = [...counts].sort((a, b) => a - b), n = x.length, s = x.reduce((a, b) => a + b, 0); return s ? x.reduce((a, v, i) => a + (2 * (i + 1) - n - 1) * v, 0) / (n * s) : 0; };
+const mean = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+const origin = p => (p.hy ? 3 : p.r);
+const ORIGIN = () => [...D.races, "Hybrid"];
+const stackBar = (parts, cols) => { const t = parts.reduce((a, b) => a + b, 0) || 1; return `<div class="stack">${parts.map((v, i) => `<i style="width:${100 * v / t}%;background:${cols[i]}" title="${v}"></i>`).join("")}</div>`; };
+const STAT_LABEL = { pts: "Points", reb: "Rebounds", ast: "Assists", stl: "Steals", blk: "Blocks", tpm: "Three-pointers", ppg: "Points per game", rpg: "Rebounds per game", apg: "Assists per game", spg: "Steals per game", bpg: "Blocks per game", value: "Value added", games: "Games played", team_pts: "Team points", team_margin: "Winning margin", wins: "Wins", mov: "Average margin" };
+
+/* ---------- Races & ancestry ---------- */
+function racesPage() {
+  const O = ORIGIN(), yrs = D.years.map(y => y.y), idx = new Map(yrs.map((y, i) => [y, i]));
+  const games = O.map(() => yrs.map(() => 0));
+  const grp = O.map(() => ({ players: 0, seasons: 0, cv: [], hof: 0, mvp: 0, titleSeasons: 0, best: null }));
+  for (const { id, p } of X.players) {
+    const o = origin(p), G = grp[o]; G.players++; G.cv.push(p.cv); if (p.hof != null) G.hof++;
+    if (!G.best || p.cv > player(G.best).cv) G.best = id;
+    for (const r of p.s) { const i = idx.get(r[0]); if (i != null) games[o][i] += r[3]; G.seasons++; if (X.champYears.get(r[0]) === r[2]) G.titleSeasons++; }
+  }
+  for (const yr of D.years) { const m = yr.aw?.mvp; if (m != null && player(m)) grp[origin(player(m))].mvp++; }
+  const tot = yrs.map((_, i) => O.reduce((a, _o, k) => a + games[k][i], 0) || 1);
+  let html = `<div class="card"><h2>Share of games played, by ancestry</h2>${chart({ kind: "area", xs: yrs, fmt: pctFmt, h: 200, series: O.map((n, k) => ({ name: n === "Hybrid" ? "Hybrid (any mixed ancestry)" : `${n} (pure)`, color: RCOL[k], data: games[k].map((v, i) => v / tot[i]) })) })}</div>`;
+  const H = D.health;
+  if (H) {
+    const col = k => H.race_share.map(r => r[k]), pop = H.pop_race.map(r => { const s = r[0] + r[1] + r[2] || 1; return r.map(v => v / s); });
+    html += `<div class="cgrid"><div class="card"><h2>Pro roster slots by dominant ancestry</h2>${chart({ kind: "area", xs: H.years, fmt: pctFmt, h: 160, series: D.races.map((n, k) => ({ name: n, color: RCOL[k], data: col(k) })) })}</div>
+      <div class="card"><h2>Whole population by race</h2>${chart({ kind: "area", xs: H.years, fmt: pctFmt, h: 160, series: D.races.map((n, k) => ({ name: n, color: RCOL[k], data: pop.map(r => r[k]) })) })}</div></div>`;
+  }
+  html += `<div class="card"><h2>How each ancestry group has done</h2><div class="scroll"><table><tr><th class="l">Group</th><th>Players</th><th>Player-seasons</th><th>Avg career value</th><th>MVPs</th><th>Seasons on a title team</th><th>Hall of Famers</th><th class="l">Best career</th></tr>` +
+    grp.map((G, k) => `<tr><td class="l"><span class="dot" style="background:${RCOL[k]}"></span>${esc(O[k])}</td><td>${G.players}</td><td>${G.seasons}</td><td>${fl(mean(G.cv), 0)}</td><td>${G.mvp}</td><td>${G.titleSeasons}</td><td>${G.hof}</td><td class="l">${G.best != null ? plink(G.best) : "—"}</td></tr>`).join("") + `</table></div>
+    <div class="muted" style="font-size:12px;margin-top:6px">Groups are by a player's ancestry: pure Human, Goliath or Elf, or Hybrid for anyone with mixed ancestry. MVPs and title-team seasons are counted for the group of the player who earned them.</div></div>`;
+  const hyb = X.players.filter(e => e.p.hy);
+  if (hyb.length) {
+    const gens = new Map(); hyb.forEach(e => push(gens, Math.min(e.p.hg || 1, 4), e.p));
+    html += `<div class="grid2"><div class="card"><h2>Hybrids by generation</h2><table><tr><th class="l">Generation</th><th>Players</th><th>Avg career value</th><th>Hall of Famers</th></tr>` +
+      [...gens.keys()].sort().map(k => `<tr><td class="l">${k === 4 ? "4+" : k}</td><td>${gens.get(k).length}</td><td>${fl(mean(gens.get(k).map(p => p.cv)), 0)}</td><td>${gens.get(k).filter(p => p.hof != null).length}</td></tr>`).join("") + `</table></div>
+      <div class="card"><h2>Top hybrid careers</h2><ul class="plist">` + [...hyb].sort((a, b) => b.p.cv - a.p.cv).slice(0, 12).map(e => `<li>${plink(e.id)}<span class="sub">${ancText(e.p)} · ${fl(e.p.cv, 0)}</span></li>`).join("") + `</ul></div></div>`;
+  } else html += `<div class="card muted">No hybrid players reached the league in this run.</div>`;
+  return html;
+}
+const ancText = p => (p.an ? p.an.map((a, k) => (a >= 0.005 ? `${D.races[k]} ${Math.round(a * 100)}%` : null)).filter(Boolean).join(" · ") : "");
+
+/* ---------- Record book ---------- */
+let recScope = "all", recSel = null;
+const REC_GROUPS = [["Single game", "game", ["pts", "reb", "ast", "stl", "blk", "tpm"]], ["Single season (40+ games)", "season", ["ppg", "rpg", "apg", "spg", "bpg", "value"]], ["Career", "career", ["pts", "reb", "ast", "stl", "blk", "games", "value"]]];
+const TEAM_RECS = [["team_game", "team_pts", "max", "Most points in a game"], ["team_game", "team_pts", "min", "Fewest points in a game"], ["team_game", "team_margin", "max", "Largest margin of victory"],
+  ["team_season", "wins", "max", "Most wins in a season"], ["team_season", "wins", "min", "Fewest wins in a season"], ["team_season", "mov", "max", "Best season margin"], ["team_season", "mov", "min", "Worst season margin"]];
+const recKey = r => `${r.k}|${r.s}|${r.sc}|${r.d}`;
+function recordsPage() {
+  const R = D.records; if (!R) return noData("record book");
+  const best = new Map(R.best.map(r => [recKey(r), r])), breaks = new Map();
+  R.log.forEach(r => push(breaks, recKey(r), r));
+  const holder = r => (r.k.startsWith("team") ? tlink(r.p) : plink(r.p));
+  const row = (label, r, k) => { if (!r) return `<tr><td class="l">${label}</td><td colspan="4" class="muted">—</td></tr>`; const key = recKey(r); return `<tr class="pick${recSel === key ? " on" : ""}" data-rec="${key}"><td class="l">${label}</td><td><b>${g2(r.v)}</b></td><td class="l">${holder(r)}</td><td><a href="#/season/${r.y}">${r.y}</a></td><td>${(breaks.get(key) ?? []).length}</td></tr>`; };
+  const head = `<tr><th class="l">Record</th><th>Value</th><th class="l">Holder</th><th>Year</th><th>Times broken</th></tr>`;
+  let html = pills([["all", "League"], ["human", "Human"], ["goliath", "Goliath"], ["elf", "Elf"]], recScope, "rs");
+  if (recSel && best.has(recSel)) html += recProgress(recSel, best.get(recSel), breaks.get(recSel) ?? [], holder);
+  else html += `<div class="card muted">Click any record to see how it has changed hands over the years.</div>`;
+  html += REC_GROUPS.map(([title, kind, stats]) => `<div class="card"><h2>${title}${recScope === "all" ? "" : " · " + D.races[["human", "goliath", "elf"].indexOf(recScope)]}</h2><table>${head}${stats.map(s => row(STAT_LABEL[s], best.get(`${kind}|${s}|${recScope}|max`))).join("")}</table></div>`).join("");
+  html += `<div class="card"><h2>Teams</h2><table>${head}${TEAM_RECS.map(([k, s, d, l]) => row(l, best.get(`${k}|${s}|all|${d}`))).join("")}</table></div>`;
+  return html;
+}
+function recProgress(key, cur, log, holder) {
+  const [k, s, sc, d] = key.split("|"), first = log[0], rows = [];
+  if (first) rows.push({ y: first.oy, v: first.o, p: first.op, k, base: true });
+  log.forEach(l => rows.push({ y: l.y, v: l.v, p: l.p, k, prev: l.o }));
+  if (!first) rows.push({ y: cur.y, v: cur.v, p: cur.p, k, base: true });
+  const label = (TEAM_RECS.find(t => t[0] === k && t[1] === s && t[2] === d)?.[3]) ?? `${STAT_LABEL[s] ?? s}${sc === "all" ? "" : " · " + sc}`;
+  return `<div class="card"><h2>History of the record: ${esc(label)}${sc !== "all" ? " (" + esc(sc) + ")" : ""}</h2><div class="scroll"><table><tr><th>Year</th><th>Value</th><th class="l">Holder</th><th class="l">Beat</th></tr>` +
+    rows.map(r => `<tr><td><a href="#/season/${r.y}">${r.y}</a></td><td><b>${g2(r.v)}</b></td><td class="l">${holder({ k, p: r.p })}</td><td class="l muted">${r.base ? "first mark set" : g2(r.prev)}</td></tr>`).join("") + `</table></div>
+    ${rows.length === 1 ? '<div class="muted">Never broken so far.</div>' : ""}</div>`;
+}
+
+/* ---------- Rivalry board ---------- */
+let rvSel = null;
+const RV_COL = { games: "var(--accent)", playoffs: "var(--gold)", marriages: "var(--elf)", disputes: "var(--bad)", moves: "var(--hyb)" };
+function rivalriesPage() {
+  const R = D.rivalry; if (!R) return noData("rivalry");
+  const hs = Object.keys(D.houses).map(Number).sort((a, b) => a - b), key = (a, b) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+  const pairMap = new Map(R.pairs.map(p => [key(p.a, p.b), p])), max = Math.max(1, ...R.pairs.map(p => p.i)), min = Math.min(...R.pairs.map(p => p.i));
+  const ranked = [...R.pairs].sort((a, b) => (b.fl != null) - (a.fl != null) || b.pk - a.pk);
+  if (rvSel === null || !pairMap.has(rvSel)) rvSel = ranked[0] ? key(ranked[0].a, ranked[0].b) : null;
+  const lastLevel = R.level.filter(v => v != null).at(-1) ?? R.min_level;
+  let html = `<div class="card"><div class="muted">A pairing becomes a rivalry once its index reaches <b>${R.relative}×</b> the median pairing (and at least ${R.min_level}) for ${R.sustained} seasons in a row; this season the bar is ${fl(lastLevel, 0)}.
+    Games alone put every pairing near the same level, so playoffs, close games, moves and family ties make the difference. The index decays 15% a season.</div></div>`;
+  html += `<div class="card"><h2>Current index (click a pair)</h2><div class="scroll"><table class="hm"><tr><th></th>${hs.map(h => `<th>${esc(shortHouse(h))}</th>`).join("")}</tr>` +
+    hs.map(a => `<tr><th class="l">${esc(shortHouse(a))}</th>${hs.map(b => { if (a === b) return `<td style="background:var(--out)"></td>`; const p = pairMap.get(key(a, b)), v = p?.i ?? 0, t = max > min ? (v - min) / (max - min) : 0;
+      return `<td class="cell" data-pair="${key(a, b)}" style="background:rgba(217,162,27,${0.12 + 0.6 * t});${p?.fl != null ? "font-weight:700;box-shadow:inset 0 0 0 2px var(--gold)" : ""}${rvSel === key(a, b) ? ";outline:2px solid var(--ink)" : ""}">${fl(v, 0)}</td>`; }).join("")}</tr>`).join("") + `</table></div>
+    <div class="muted" style="font-size:12px;margin-top:6px">Gold outline: an established rivalry.</div></div>`;
+  const chosen = ranked.filter(p => p.fl != null).slice(0, 6).map(p => key(p.a, p.b)); if (rvSel && !chosen.includes(rvSel)) chosen.push(rvSel);
+  const pal = ["var(--accent)", "var(--gold)", "var(--elf)", "var(--bad)", "var(--hyb)", "var(--goliath)", "var(--ink)"];
+  const name = k => { const [a, b] = k.split("-"); return `${shortHouse(a)} – ${shortHouse(b)}`; };
+  html += `<div class="card"><h2>Index over time</h2>${chart({ xs: R.years, h: 210, zero: true, fmt: v => v.toFixed(0), series: [{ name: "Rivalry bar", color: "var(--muted)", dash: "4 3", data: R.level, w: 1.2 }, ...chosen.map((k, i) => ({ name: name(k), color: pal[i % pal.length], data: R.hist[k], w: k === rvSel ? 2.8 : 1.6 }))] })}
+    <div class="muted" style="font-size:12px">Shows the established rivalries and the pair you selected.</div></div>`;
+  html += `<div class="card"><h2>Rivalries ranked</h2><div class="lg">${Object.entries(RV_COL).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("")}</div><div class="scroll"><table><tr><th class="l">Pair</th><th>Peak</th><th>Peak year</th><th>Now</th><th>Established</th><th class="l">What fuelled it</th></tr>` +
+    ranked.slice(0, 16).map(p => { const k = key(p.a, p.b), rs = Object.keys(RV_COL).map(r => p.rs[r] ?? 0); return `<tr class="pick${rvSel === k ? " on" : ""}" data-pair="${k}"><td class="l">${hlink(p.a)} – ${hlink(p.b)}</td><td>${fl(p.pk, 0)}</td><td>${p.py}</td><td>${fl(p.i, 0)}</td><td>${p.fl ?? '<span class="muted">not yet</span>'}</td><td class="l">${stackBar(rs, Object.values(RV_COL))}</td></tr>`; }).join("") + `</table></div></div>`;
+  const hooks = Object.keys(R.top).map(Number).sort((a, b) => a - b).map(y => [y, R.top[y].filter(([a, b]) => { const f = pairMap.get(key(a, b))?.fl; return f != null && f <= y; })]).filter(([, l]) => l.length);
+  html += `<div class="card"><h2>Hooks by season</h2><div class="muted" style="margin-bottom:6px">The three hottest pairings each year, once they count as rivalries.</div><ul class="plist" style="max-height:300px;overflow-y:auto">` +
+    (hooks.map(([y, l]) => `<li><a href="#/season/${y}"><b>${y}</b></a> ${l.map(([a, b, v]) => `${hlink(a)} – ${hlink(b)} <span class="muted">(${fl(v, 0)})</span>`).join("; ")}</li>`).join("") || '<li class="muted">No rivalries established yet.</li>') + `</ul></div>`;
+  return html;
+}
+
+/* ---------- Hall of Fame and all-time lists ---------- */
+let hofView = "hof", hofScope = "all";
+const HOF_VIEWS = [["hof", "Hall of Fame"], ["builders", "Dynasty builders"], ["career", "Career leaders"], ["season", "Season leaders"], ["honours", "Honours"], ["teams", "Teams"]];
+const inScope = p => hofScope === "all" || (hofScope === "hy" ? p.hy : !p.hy && String(p.r) === hofScope);
+const HONOURS = ["MVP", "Finals MVP", "Defensive Player", "Scoring Champion", "Rookie of the Year", "Most Improved", "All-League"];
+function leaderCard(title, rows) {
+  return `<div class="card"><h2>${esc(title)}</h2><ol class="plist" style="padding-left:22px;list-style:decimal">${rows.map(r => `<li style="display:list-item;padding-left:4px"><span>${r.who}</span><span class="sub"><b>${r.val}</b>${r.sub ? " · " + r.sub : ""}</span></li>`).join("") || '<li class="muted">None in this group.</li>'}</ol></div>`;
+}
+function hofPage() {
+  if (!D.builders || !X.players.every(e => e.p.tot)) return noData("Hall of Fame and all-time lists");
+  let html = pills(HOF_VIEWS, hofView, "hv");
+  if (["hof", "career", "season", "honours"].includes(hofView)) html += pills([["all", "All players"], ["0", "Human"], ["1", "Goliath"], ["2", "Elf"], ["hy", "Hybrids"]], hofScope, "hs");
+  const P = X.players.filter(e => inScope(e.p));
+  if (hofView === "hof") {
+    const rows = D.hof.filter(h => player(h.p) && inScope(player(h.p)));
+    html += `<div class="card"><h2>${rows.length} inducted${hofScope === "all" ? "" : " in this group"}</h2><div class="muted" style="margin-bottom:6px">Each retired career is scored as the average of three standardised parts: total value, best five seasons, and honours, each measured against players of the same role (guard, forward or center, by height). Longevity alone is not enough. Click a heading to sort.</div>` +
+      (rows.length ? `<div class="scroll"><table class="sortable"><tr><th class="sortable" data-c="0">Class</th><th class="l sortable" data-c="1">Player</th><th class="l sortable" data-c="2">Ancestry</th><th class="l sortable" data-c="3">Role</th><th class="sortable" data-c="4">Seasons</th><th class="sortable" data-c="5">Career value</th><th class="sortable" data-c="6">Best 5</th><th class="sortable" data-c="7">Honours</th><th class="sortable" data-c="8">Score</th></tr>` +
+        rows.sort((a, b) => b.y - a.y).map(h => { const p = player(h.p), o = origin(p); return `<tr><td data-v="${h.y}">${h.y}</td><td class="l" data-v="${esc(p.n)}">${plink(h.p)}</td><td class="l" data-v="${o}"><span class="dot" style="background:${RCOL[o]}"></span>${esc(ORIGIN()[o])}</td><td class="l" data-v="${h.role ?? ""}">${esc(h.role ?? "—")}</td><td data-v="${p.s?.length ?? 0}">${p.s?.length ?? 0}</td><td data-v="${h.career}">${fl(h.career, 0)}</td><td data-v="${h.peak}">${fl(h.peak, 0)}</td><td data-v="${h.honours}">${fl(h.honours, 0)}</td><td data-v="${h.score}">${fl(h.score, 2)}</td></tr>`; }).join("") + `</table></div>` : `<div class="muted">Nobody yet.</div>`) + `</div>`;
+  } else if (hofView === "builders") {
+    html += `<div class="card"><h2>Dynasty builders</h2><div class="muted" style="margin-bottom:6px">Heads of house honoured for the titles won during their tenure.</div>` +
+      (D.builders.length ? `<table><tr><th>Class</th><th class="l">Head</th><th class="l">House</th><th>Titles</th></tr>${[...D.builders].sort((a, b) => b.y - a.y).map(b => `<tr><td>${b.y}</td><td class="l">${plink(b.p)}</td><td class="l">${hlink(b.h)}</td><td>${b.t}</td></tr>`).join("")}</table>` : `<div class="muted">No head of house has yet won three titles in a tenure.</div>`) + `</div>`;
+  } else if (hofView === "career") {
+    const top = (f, fmt, sub) => [...P].sort((a, b) => f(b.p) - f(a.p)).slice(0, 10).filter(e => f(e.p) > 0).map(e => ({ who: plink(e.id) + (e.p.hof != null ? ' <span class="chip hof">HOF</span>' : ""), val: fmt(f(e.p)), sub: sub(e) }));
+    const yrs = e => `${fy(e.first)}–${fy(e.last)}`, n = v => Math.round(v).toLocaleString();
+    html += `<div class="grid2">` + [["Value added", p => p.tot[6], v => fl(v, 0)], ["Points", p => p.tot[0], n], ["Rebounds", p => p.tot[1], n], ["Assists", p => p.tot[2], n], ["Steals", p => p.tot[3], n], ["Blocks", p => p.tot[4], n], ["Games played", p => p.tot[5], n], ["Titles as a core player", p => p.tt, n]]
+      .map(([t, f, fm]) => leaderCard(t, top(f, fm, yrs))).join("") + `</div>`;
+  } else if (hofView === "season") {
+    const rows = []; P.forEach(e => e.p.s.forEach(r => { if (r[3] >= 40) rows.push({ id: e.id, r }); }));
+    const top = (c) => [...rows].sort((a, b) => b.r[c] - a.r[c]).slice(0, 10).map(x => ({ who: plink(x.id), val: fl(x.r[c], c === 10 ? 0 : 1), sub: `<a href="#/season/${x.r[0]}">${x.r[0]}</a>, ${esc(tname(x.r[2]))}` }));
+    html += `<div class="muted" style="margin-bottom:10px">Seasons of 40 or more games.</div><div class="grid2">` + [["Points per game", 5], ["Rebounds per game", 6], ["Assists per game", 7], ["Steals per game", 8], ["Blocks per game", 9], ["Value added", 10]].map(([t, c]) => leaderCard(t, top(c))).join("") + `</div>`;
+  } else if (hofView === "honours") {
+    const by = new Map(HONOURS.map(h => [h, new Map()]));
+    P.forEach(e => (e.p.aw ?? []).forEach(([y, a]) => { const m = by.get(a); if (m) m.set(e.id, (m.get(e.id) ?? 0) + 1); }));
+    html += `<div class="grid2">` + HONOURS.map(h => leaderCard(h, [...by.get(h)].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, c]) => ({ who: plink(id), val: c, sub: `${fy(X.players.find(e => e.id === id).first)}–${fy(X.players.find(e => e.id === id).last)}` })))).join("") + `</div>`;
+  } else {
+    const rows = []; D.years.forEach(y => D.teams.forEach(t => rows.push({ y: y.y, t: t.id, w: y.w[t.id], l: y.l[t.id], mov: y.mov[t.id], champ: y.c === t.id })));
+    const list = (f, d, fm) => [...rows].sort((a, b) => d * (f(b) - f(a))).slice(0, 10).map(r => ({ who: tlink(r.t) + (r.champ ? ' <span class="chip champ">Champion</span>' : ""), val: fm(r), sub: `<a href="#/season/${r.y}">${r.y}</a>` }));
+    html += `<div class="grid2">${leaderCard("Most wins in a season", list(r => r.w, 1, r => `${r.w}-${r.l}`))}${leaderCard("Fewest wins in a season", list(r => r.w, -1, r => `${r.w}-${r.l}`))}${leaderCard("Best season margin", list(r => r.mov, 1, r => (r.mov > 0 ? "+" : "") + fl(r.mov)))}${leaderCard("Worst season margin", list(r => r.mov, -1, r => fl(r.mov)))}</div>`;
+    const titles = D.teams.map(t => ({ t: t.id, n: X.stats[t.id].titles.length })).sort((a, b) => b.n - a.n);
+    html += `<div class="card" style="margin-top:16px"><h2>Titles by team</h2>${titles.map(x => `<div style="display:flex;gap:8px;align-items:center;margin:3px 0"><span style="flex:0 0 190px">${tlink(x.t)}</span><div class="stack" style="flex:1"><i style="width:${100 * x.n / Math.max(titles[0].n, 1)}%;background:var(--gold)"></i></div><b>${x.n}</b></div>`).join("")}</div>`;
+  }
+  return html;
+}
+
+/* ---------- League health ---------- */
+let hTrait = 0, hMetric = "ortg", hPop = "pros";
+const METRIC_LABEL = { pace: "Pace (possessions per 48)", ortg: "Offensive rating", ppg: "Points per team-game", efg: "Effective FG%", ts: "True shooting %", tov_pct: "Turnover %", orb_pct: "Offensive rebound %", fta_fga: "Free-throw rate (FTA/FGA)", tpa_fga: "Three-point rate (3PA/FGA)", tp_pct: "Three-point %", ft_pct: "Free-throw %", ast: "Assists per team-game", stl: "Steals per team-game", blk: "Blocks per team-game", pf: "Fouls per team-game", home_margin: "Home margin", home_win: "Home win %" };
+const FRAC = new Set(["efg", "ts", "tp_pct", "ft_pct", "home_win"]);
+function healthPage() {
+  const H = D.health; if (!H || !H.years.length) return noData("league health");
+  const xs = H.years, Lm = H.limits, n = xs.length, houses = Object.keys(D.houses).map(Number);
+  const share = xs.map((_, i) => { if (i < Lm.title_window - 1) return null; const c = new Map(); H.champ_house.slice(i - Lm.title_window + 1, i + 1).forEach(h => c.set(h, (c.get(h) ?? 0) + 1)); return Math.max(...c.values()) / Lm.title_window; });
+  let html = "";
+  if (n <= Lm.burn_in) html += `<div class="card"><span class="muted">Only ${n} seasons: the stability alarms need more than ${Lm.burn_in} (the founding league is a transient).</span></div>`;
+  else if (!H.alarms.length) html += `<div class="card"><span class="ok">All clear.</span> No stability alarms over ${n} seasons: trait drift, best-team margin and single-house title share all stayed inside their limits.</div>`;
+  else html += `<div class="card"><span class="badtxt">${H.alarms.length} alarm${H.alarms.length === 1 ? "" : "s"}</span>${H.alarms.map(a => `<div class="alarm"><b>${esc(a.kind.replace(/_/g, " "))}</b> · ${esc(a.detail)}</div>`).join("")}</div>`;
+  html += `<div class="cgrid">
+    <div class="card"><h2>Best team's margin of victory</h2>${chart({ xs, series: [{ name: "Best team margin", color: "var(--accent)", data: H.top_mov }], hlines: [{ y: Lm.top_mov, label: `alarm ${Lm.top_mov}`, color: "var(--bad)" }], zero: true, yMax: Math.max(Lm.top_mov + 2, ...H.top_mov) })}</div>
+    <div class="card"><h2>Share of titles won by the top house (${Lm.title_window}-season window)</h2>${chart({ xs, series: [{ name: "Top house's share", color: "var(--gold)", data: share }], hlines: [{ y: Lm.title_share, label: `alarm ${pctFmt(Lm.title_share)}`, color: "var(--bad)" }], fmt: pctFmt, yMin: 0, yMax: Math.max(0.5, ...share.filter(v => v != null)) })}</div>
+    <div class="card"><h2>Competitive balance: spread of win percentage</h2>${chart({ xs, series: [{ name: "SD of win %", color: "var(--elf)", data: H.win_sd }], yMin: 0, fmt: v => v.toFixed(3) })}</div>
+    <div class="card"><h2>Inbreeding in the living population</h2>${chart({ xs, series: [{ name: "Mean F", color: "var(--hyb)", data: H.f }], yMin: 0, fmt: v => v.toFixed(4) })}</div>
+    <div class="card"><h2>Houses alive</h2>${chart({ xs, series: [{ name: "Houses alive", color: "var(--goliath)", data: H.houses }], zero: true, yMax: Math.max(...H.houses) + 1, fmt: v => v.toFixed(0) })}</div>
+    <div class="card"><h2>Share of pro slots held by house-bred players</h2>${chart({ xs, series: [{ name: "House-bred share", color: "var(--human)", data: H.dyn }], fmt: pctFmt, yMin: 0, yMax: 1 })}</div></div>`;
+  html += `<div class="card"><h2>League game metric</h2><select id="h-metric">${Object.keys(H.metrics).map(k => `<option value="${k}"${k === hMetric ? " selected" : ""}>${esc(METRIC_LABEL[k] ?? k)}</option>`).join("")}</select>` +
+    chart({ xs, h: 190, series: [{ name: METRIC_LABEL[hMetric] ?? hMetric, color: "var(--accent)", data: H.metrics[hMetric] ?? [] }], fmt: FRAC.has(hMetric) ? v => (100 * v).toFixed(1) + "%" : undefined }) + `</div>`;
+  html += `<div class="card"><h2>Trait drift</h2><select id="h-trait">${H.traits.map((t, i) => `<option value="${i}"${i === hTrait ? " selected" : ""}>${esc(t.replace(/_/g, " "))}</option>`).join("")}</select>
+    <span class="muted" style="font-size:12px"> In SD units of the frozen year-0 reference; the alarm trips when a 20-season average moves more than ${Lm.mean_drift} SD (mean) or ${Lm.p99_drift} SD (99th percentile) over 50 seasons.</span>` +
+    chart({ xs, h: 200, series: [{ name: "Pros, mean", color: "var(--accent)", data: H.mz.map(r => r[hTrait]) }, { name: "Population adults, mean", color: "var(--elf)", data: H.pz.map(r => r[hTrait]) }, { name: "Population, 99th percentile", color: "var(--gold)", data: H.p99.map(r => r[hTrait]), dash: "4 3" }], hlines: [{ y: 0, label: "", color: "var(--muted)" }] }) + `</div>`;
+  const chunks = []; for (let i = 0; i < n; i += 10) chunks.push([i, Math.min(i + 10, n)]);
+  const src = hPop === "pros" ? H.mz : H.pz;
+  html += `<div class="card"><h2>Trait means by decade</h2>${pills([["pros", "Pros"], ["pop", "Population adults"]], hPop, "hp")}<div class="scroll"><table class="heat"><tr><th class="l">Trait</th>${chunks.map(([a, b]) => `<th>${xs[a]}–${xs[b - 1]}</th>`).join("")}</tr>` +
+    H.traits.map((t, k) => `<tr><td>${esc(t.replace(/_/g, " "))}</td>${chunks.map(([a, b]) => { const v = mean(src.slice(a, b).map(r => r[k])); return `<td style="background:${heat(v)}">${v >= 0 ? "+" : ""}${v.toFixed(2)}</td>`; }).join("")}</tr>`).join("") + `</table></div>
+    <div class="muted" style="font-size:12px;margin-top:6px">Mean in SD units of the frozen year-0 reference. Blue above it, orange below; a steady trend across columns is drift.</div></div>`;
+  html += `<div class="card"><h2>Decade summary</h2><div class="scroll"><table><tr><th class="l">Seasons</th><th>Best-team margin</th><th>Win % spread</th><th>Title Gini</th><th>Mean inbreeding</th><th>House-bred share</th><th>Houses alive</th></tr>` +
+    chunks.map(([a, b]) => { const tm = mean(H.top_mov.slice(a, b)), cnt = houses.map(h => H.champ_house.slice(a, b).filter(c => c === h).length);
+      return `<tr><td class="l">${xs[a]}–${xs[b - 1]}</td><td class="${tm > Lm.top_mov ? "badtxt" : ""}">${tm.toFixed(1)}</td><td>${mean(H.win_sd.slice(a, b)).toFixed(3)}</td><td>${gini(cnt).toFixed(2)}</td><td>${mean(H.f.slice(a, b)).toFixed(4)}</td><td>${pctFmt(mean(H.dyn.slice(a, b)))}</td><td>${H.houses[b - 1]}</td></tr>`; }).join("") + `</table></div>
+    <div class="muted" style="font-size:12px;margin-top:6px">Title Gini: 0 means titles shared evenly among houses, 1 means one house won everything in that decade.</div></div>`;
+  return html;
+}
+
+/* ---------- page table for the new tabs ---------- */
+const kinds = (...k) => D.events.filter(e => k.includes(e.k));
+const NEW = {
+  races: { html: racesPage, ctx: () => ({ title: "Prodigies and rare traits", events: kinds("prodigy", "trait_exposed"), auto: 1 }) },
+  records: { html: recordsPage, ctx: () => ({ title: "Record breaks", events: kinds("record"), auto: 1 }),
+    bind() { onPills("rs", v => { recScope = v; recSel = null; }); document.querySelectorAll("tr[data-rec]").forEach(r => r.addEventListener("click", () => { recSel = recSel === r.dataset.rec ? null : r.dataset.rec; rerender(); })); } },
+  rivalries: { html: rivalriesPage, ctx: () => ({ title: "Rivalries established", events: kinds("rivalry"), auto: 1 }),
+    bind() { document.querySelectorAll("[data-pair]").forEach(c => c.addEventListener("click", () => { rvSel = c.dataset.pair; rerender(); })); } },
+  hof: { html: hofPage, ctx: () => ({ title: "Hall of Fame news", events: kinds("hof", "hof_builder"), auto: 1 }),
+    bind() { onPills("hv", v => { hofView = v; }); onPills("hs", v => { hofScope = v; }); makeSortable(); } },
+  health: { html: healthPage, ctx: () => ({ title: "Dynasty events", events: kinds("extinction", "succession_effect", "drought_ended", "outlier", "succession", "adoption", "heir_death"), auto: 2 }),
+    bind() { $("#h-metric")?.addEventListener("change", e => { hMetric = e.target.value; rerender(); }); $("#h-trait")?.addEventListener("change", e => { hTrait = +e.target.value; rerender(); }); onPills("hp", v => { hPop = v; }); } },
+};
+function makeSortable() {
+  document.querySelectorAll("table.sortable").forEach(t => {
+    t.querySelectorAll("th.sortable").forEach(th => th.addEventListener("click", () => {
+      const c = +th.dataset.c, dir = th.dataset.dir === "desc" ? 1 : -1, rows = [...t.querySelectorAll("tr")].slice(1);
+      t.querySelectorAll("th").forEach(x => delete x.dataset.dir); th.dataset.dir = dir === -1 ? "desc" : "asc";
+      const v = r => { const x = r.children[c].dataset.v, num = parseFloat(x); return isNaN(num) || /[a-z]/i.test(x) ? x : num; };
+      rows.sort((a, b) => { const x = v(a), y = v(b); return dir * (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))); }).forEach(r => t.appendChild(r));
+    }));
+  });
+}
+
+/* ---------- page bindings ---------- */
+function bindPage(tab, arg) {
+  if (tab === "dynasty") {
+    const strip = $(".strip");
+    strip?.addEventListener("click", e => { const c = e.target.closest("i[data-y]"); if (c) location.hash = `#/season/${c.dataset.y}`; });
+    strip?.addEventListener("mousemove", e => {
+      const c = e.target.closest("i[data-y]"), tip = $("#tip");
+      if (!c) { tip.style.display = "none"; return; }
+      const yr = X.year.get(+c.dataset.y), t = +c.dataset.t, r = result(yr, t);
+      tip.innerHTML = `<b>${esc(tname(t))}</b><br>Year ${yr.y}: ${yr.w[t]}–${yr.l[t]}, MOV ${yr.mov[t] > 0 ? "+" : ""}${fl(yr.mov[t])}<br>${RES_LABEL[r]}`;
+      tip.style.display = "block"; tip.style.left = Math.min(e.clientX + 14, innerWidth - 270) + "px"; tip.style.top = e.clientY + 14 + "px";
+    });
+    strip?.addEventListener("mouseleave", () => ($("#tip").style.display = "none"));
+  } else if (tab === "season") {
+    const y = X.year.has(arg) ? arg : D.meta.last_year;
+    $("#prev")?.addEventListener("click", () => stepYear(-1));
+    $("#next")?.addEventListener("click", () => stepYear(1));
+    $("#yslider")?.addEventListener("input", e => { location.hash = `#/season/${e.target.value}`; });
+    if (!X.year.has(arg)) history.replaceState(null, "", `#/season/${y}`);
+  } else {
+    const s = $("#psearch");
+    s?.addEventListener("input", e => { pq = e.target.value; if (arg !== null && player(arg)) location.hash = "#/players"; else renderPlayerLists(); });
+    if (!(arg !== null && player(arg))) renderPlayerLists();
+  }
+}
+function stepYear(d) {
+  const { tab, arg } = parseRoute(), y = X.year.has(arg) ? arg : D.meta.last_year, i = D.years.findIndex(r => r.y === y) + d;
+  if (i >= 0 && i < D.years.length) location.hash = `#/season/${D.years[i].y}`;
+}
+addEventListener("keydown", e => {
+  if (!D || parseRoute().tab !== "season" || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName) && document.activeElement.type !== "range") return;
+  if (e.key === "ArrowLeft") stepYear(-1); else if (e.key === "ArrowRight") stepYear(1);
+});
+addEventListener("hashchange", () => D && route());
+
+/* ---------- empty state, new run, saved runs ---------- */
+function emptyState() {
+  return `<div class="card empty"><h2>No run loaded</h2><p class="muted">Open a saved run (a <code>viewer.json</code> written by a simulation) or start a fresh one.</p>
+    <div class="row"><button id="e-load">Load a saved run…</button><button id="e-new" class="primary">Start a new run…</button></div>
+    <p class="muted" style="margin-top:22px">Tip: you can also drag a <code>viewer.json</code> onto this page.</p></div>`;
+}
+function bindEmpty() { $("#e-load")?.addEventListener("click", () => $("#file").click()); $("#e-new")?.addEventListener("click", openNew); }
+
+function openNew() {
+  const body = $("#newbody");
+  if (!SERVER) {
+    body.innerHTML = `<p>A static page can't run the simulation. Start the local launcher, which opens this same page with a <b>New run</b> form:</p>
+      <pre>python -m dynasty_sim.cli view</pre><p class="muted">Or write a run to disk and load its <code>viewer.json</code> here:</p>
+      <pre>python -m dynasty_sim.cli run --years 50 --seed 3 --out runs/demo</pre>
+      <div class="row"><button id="n-close">Close</button></div>`;
+  } else {
+    body.innerHTML = `<form id="nform"><label>Seed (same seed, same history)</label><input type="number" name="seed" min="0" max="4294967295" value="${Math.floor(Math.random() * 10000)}" required>
+      <label>Seasons to simulate (1–300)</label><input type="number" name="years" min="1" max="300" value="50" required>
+      <label>Teams</label><select name="teams"><option>4</option><option selected>8</option></select>
+      <p class="muted" style="font-size:12px">About 30 s for 50 seasons (8 teams); the first run after install spends about a minute compiling the engine.</p>
+      <div class="err" id="nerr"></div><div class="row"><button type="button" id="n-close">Cancel</button><button class="primary" type="submit">Start</button></div></form>`;
+    $("#nform").onsubmit = async e => {
+      e.preventDefault();
+      const f = new FormData(e.target), payload = { seed: +f.get("seed"), years: +f.get("years"), teams: +f.get("teams") };
+      const r = await fetch("/api/new", { method: "POST", body: JSON.stringify(payload) }), j = await r.json();
+      if (!r.ok) { $("#nerr").textContent = j.error; return; }
+      $("#newdlg").close(); pollJob();
+    };
+  }
+  $("#n-close").onclick = () => $("#newdlg").close();
+  $("#newdlg").showModal();
+}
+async function pollJob() {
+  clearTimeout(jobTimer);
+  const pill = $("#jobpill");
+  let j;
+  try { j = await (await fetch("/api/job")).json(); } catch { return; }
+  if (j.state === "running") {
+    pill.style.display = "inline-block"; pill.textContent = j.done ? `Simulating seed ${j.seed}: season ${j.done} of ${j.total}` : `Seed ${j.seed}: starting (compiling the engine on first run)…`;
+    jobTimer = setTimeout(pollJob, 800);
+  } else if (j.state === "done") {
+    pill.style.display = "none"; await refreshSaved(j.path); await loadSaved(j.path);
+  } else if (j.state === "error") {
+    pill.style.display = "inline-block"; pill.textContent = "Run failed: " + j.error;
+  }
+}
+async function loadSaved(path) {
+  try {
+    const r = await fetch("/api/run?path=" + encodeURIComponent(path));
+    if (!r.ok) throw new Error("Could not read that run.");
+    init(await r.json()); location.hash = "#/dynasty"; $("#saved").value = path;
+  } catch (e) { toast(e.message); }
+}
+async function refreshSaved(select) {
+  const j = await (await fetch("/api/runs")).json(), sel = $("#saved");
+  sel.innerHTML = `<option value="">Saved runs (${j.runs.length})…</option>` + j.runs.map(r => `<option value="${esc(r.path)}">${esc(r.label)} — seed ${r.seed}, ${r.years}y, ${r.teams} teams</option>`).join("");
+  sel.style.display = "";
+  if (select) sel.value = select;
+  return j;
+}
+
+/* ---------- boot ---------- */
+$("#btn-load").onclick = () => $("#file").click();
+$("#file").onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); e.target.value = ""; };
+$("#btn-new").onclick = openNew;
+$("#saved").onchange = e => e.target.value && loadSaved(e.target.value);
+addEventListener("dragover", e => { e.preventDefault(); $("#drop").style.display = "flex"; });
+addEventListener("dragleave", e => { if (!e.relatedTarget) $("#drop").style.display = "none"; });
+addEventListener("drop", e => { e.preventDefault(); $("#drop").style.display = "none"; if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+(async function boot() {
+  if (EMBEDDED) { try { init(EMBEDDED); } catch (e) { route(); toast(e.message); } } else route();
+  if (location.protocol.startsWith("http")) {
+    try {
+      const j = await refreshSaved();
+      SERVER = true;
+      if (!EMBEDDED && j.current) await loadSaved(j.current);
+      pollJob();
+    } catch { SERVER = false; }
+  }
+})();
+</script>
+</body>
+</html>

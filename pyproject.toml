@@ -15,7 +15,7 @@ dev = ["pytest", "hypothesis"]
 include = ["dynasty_sim*"]
 
 [tool.setuptools.package-data]
-dynasty_sim = ["config/*.yaml"]
+dynasty_sim = ["config/*.yaml", "output/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

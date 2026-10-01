@@ -47,6 +47,8 @@ def run(years: int, seed: int, out: Path, teams: int = 8, history: bool = True, 
     if history:
         from dynasty_sim.output.export import export_history
         summary = export_history(w, out / "history", parquet=parquet)
+        from dynasty_sim.output.viewer import write_viewer
+        write_viewer(w, out)
         led = w.ledger
         manifest["history"] = {"pages": summary["pages"], "unresolved": summary["problems"], "arcs": summary["arcs"],
                                "events": len(led.log.events), "hall_of_fame": len(led.hof.players),
@@ -74,7 +76,16 @@ def main(argv: list[str] | None = None) -> None:
     sw.add_argument("--seeds", type=int, nargs=2, default=[0, 20], metavar=("FIRST", "LAST_EXCLUSIVE"))
     sw.add_argument("--years", type=int, default=100)
     sw.add_argument("--workers", type=int, default=4)
+    v = sub.add_parser("view", help="open the history viewer in a browser (load a saved run or start a new one)")
+    v.add_argument("--runs", type=Path, default=Path("runs"), help="folder holding saved runs (each with a viewer.json)")
+    v.add_argument("--load", type=Path, help="a viewer.json inside the runs folder to open straight away")
+    v.add_argument("--port", type=int, default=8765)
+    v.add_argument("--no-browser", action="store_true")
     args = ap.parse_args(argv)
+    if args.cmd == "view":
+        from dynasty_sim.output.viewer_server import serve
+        serve(args.runs, args.port, args.load, open_browser=not args.no_browser)
+        return
     if args.cmd == "sweep":
         from dynasty_sim.history.sweep import report, sweep
         res = sweep(range(*args.seeds), args.years, workers=args.workers)
