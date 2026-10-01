@@ -83,6 +83,7 @@ class Ledger:
         self.hof = HallOfFame()
         self.rivalry = RivalryBoard()
         self.awards: dict[int, dict] = {}
+        self.finals_mvp_lines: dict[int, np.ndarray] = {}   # year -> the Finals MVP's [games, stats...] over the finals
         self.values: dict[int, dict] = {}                  # year -> {pid: season value}
         self.snapshots: list[GameSnapshot] = []
         self.rivalry_top: dict[int, list] = {}
@@ -215,8 +216,12 @@ class Ledger:
             votes = self._role_votes.setdefault(p, {})
             votes[role] = votes.get(role, 0) + 1
         win = {t: float(res.wins[t] / max(res.wins[t] + res.losses[t], 1)) for t in range(len(res.wins))}
-        aw = AW.yearly_awards(lines, values, team_of, rookies, prev, res.champion, roles, win)
+        finals = {p: v for p, v in self._finals_lines(year, res).items() if p in lines}
+        aw = AW.yearly_awards(lines, values, team_of, rookies, prev, res.champion, roles, win, finals)
         self.awards[year] = aw
+        fmvp = aw.get("finals_mvp")
+        if fmvp in finals:
+            self.finals_mvp_lines[year] = finals[fmvp]
         spec = {"mvp": ("MVP", EV.LANDMARK), "finals_mvp": ("Finals MVP", EV.MAJOR), "dpoy": ("Defensive Player", EV.MAJOR),
                 "roy": ("Rookie of the Year", EV.MAJOR), "scoring": ("Scoring Champion", EV.NOTABLE),
                 "most_improved": ("Most Improved", EV.NOTABLE)}
@@ -225,12 +230,32 @@ class Ledger:
             if pid is None:
                 continue
             self.careers[pid].awards.append((year, label))
+            extra = {}
+            if key == "finals_mvp" and year in self.finals_mvp_lines:
+                extra["line"] = AW.finals_line_text(self.finals_mvp_lines[year])
             self.log.add("award", year, (pid,), (self.house_of_team(team_of[pid]),), imp, "season_value", values[pid],
-                         award=label)
+                         award=label, **extra)
         for pid in aw.get("all_league", []):
             self.careers[pid].awards.append((year, "All-League"))
             self.log.add("award", year, (pid,), (self.house_of_team(team_of[pid]),), EV.NOTABLE, "season_value",
                          values[pid], award="All-League")
+
+    def _finals_lines(self, year, res) -> dict:
+        """pid -> [games, stats...] summed over the champion's games in the final series (from the playoff snapshots)."""
+        teams, out = {res.champion, res.finalist}, {}
+        for s in reversed(self.snapshots):
+            if s.year != year:
+                break                                            # this year's playoff games are the newest snapshots
+            if not s.playoff or set(s.teams) != teams:
+                continue
+            side = s.teams.index(res.champion)
+            for i, pid in enumerate(s.rosters[side]):
+                row = s.box[side, i]
+                if row[S.ST_SEC] > 0:
+                    v = out.setdefault(pid, np.zeros(1 + S.NSTAT))
+                    v[0] += 1
+                    v[1:] += row
+        return out
 
     def _season_records(self, lg, year, res, lines, values) -> None:
         R = self.records

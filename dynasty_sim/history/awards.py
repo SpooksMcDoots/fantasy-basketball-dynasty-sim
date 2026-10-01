@@ -61,6 +61,27 @@ def mvp_pick(qual: list, lines: dict, values: dict, team_of: dict, team_win: dic
     return max(qual, key=lambda p: (wv * zv[p] + wp * zp[p] + (ww * zw[p] if team_win else 0.0), -p))
 
 
+FMVP_WEIGHTS = (0.6, 0.4)           # value over the finals games, finals points per game
+
+
+def finals_mvp_pick(finals: dict):
+    """The champion's best player in the final series: a blend of standardised finals value and scoring.
+    `finals[pid] = [games, stats...]` summed over the finals games, champion players only."""
+    played = [p for p, v in finals.items() if v[1 + S.ST_SEC] > 0]
+    if not played:
+        return None
+    wv, wp = FMVP_WEIGHTS
+    zv = _z({p: raw_value(finals[p][1:]) for p in played})
+    zp = _z({p: per_game(finals[p])["ppg"] for p in played})
+    return max(played, key=lambda p: (wv * zv[p] + wp * zp[p], -p))
+
+
+def finals_line_text(v: np.ndarray) -> str:
+    """'27.5 pts, 9.0 reb, 4.3 ast in 4 finals games' from a [games, stats...] line."""
+    pg, g = per_game(v), int(v[0])
+    return f"{pg['ppg']:.1f} pts, {pg['rpg']:.1f} reb, {pg['apg']:.1f} ast in {g} finals game{'s' if g != 1 else ''}"
+
+
 ROLE_SLOTS = (("guard", 2), ("forward", 2), ("center", 1))      # All-League first team: a lineup, not the five best box scores
 
 
@@ -84,8 +105,9 @@ def all_league_team(qual: list, values: dict, roles: dict | None) -> list:
 
 
 def yearly_awards(lines: dict, values: dict, team_of: dict, rookies: set, prev_values: dict, champion_team: int,
-                  roles: dict | None = None, team_win: dict | None = None) -> dict:
-    """Return {award: pid or [pids]} for one season."""
+                  roles: dict | None = None, team_win: dict | None = None, finals: dict | None = None) -> dict:
+    """Return {award: pid or [pids]} for one season. With `finals` (the champion's finals box lines) the Finals MVP is
+    judged on the finals; without it, on the regular season."""
     qual = [p for p, v in lines.items() if qualified(v)]
     if not qual:
         return {}
@@ -101,7 +123,11 @@ def yearly_awards(lines: dict, values: dict, team_of: dict, rookies: set, prev_v
     imp = [p for p in qual if p in prev_values]
     if imp:
         out["most_improved"] = best(imp, lambda p: values[p] - prev_values[p])
-    champs = [p for p in qual if team_of.get(p) == champion_team]
-    if champs:
-        out["finals_mvp"] = best(champs, lambda p: values[p])
+    fmvp = finals_mvp_pick(finals) if finals else None
+    if fmvp is not None:
+        out["finals_mvp"] = fmvp
+    else:
+        champs = [p for p in qual if team_of.get(p) == champion_team]
+        if champs:
+            out["finals_mvp"] = best(champs, lambda p: values[p])
     return out

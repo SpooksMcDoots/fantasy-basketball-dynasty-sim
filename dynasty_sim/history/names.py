@@ -11,6 +11,7 @@ from dynasty_sim.core.types import RACES
 
 _NARRATIVE = STREAMS.index("narrative")
 _GIVEN, _SURNAME, _TEAM, _HOUSE = range(4)
+_RESERVED = {"None", "Nan", "Null", "Nil", "True", "False", "Pid"}    # words the exporter would flag as placeholder text
 
 _POOLS = {
     "human": (["b", "d", "k", "l", "m", "n", "r", "s", "t", "v", "c", "h", "f", "w", "j"],
@@ -38,9 +39,11 @@ class NameBook:
 
     def _word(self, rng: np.random.Generator, race: str, syllables: int) -> str:
         on, vo, co = _POOLS[race]
-        w = "".join(on[rng.integers(len(on))] + vo[rng.integers(len(vo))] + (co[rng.integers(len(co))] if i == syllables - 1 else "")
-                    for i in range(syllables))
-        return w.capitalize()
+        while True:                                            # redraw the rare word that reads as a code value ("None")
+            w = "".join(on[rng.integers(len(on))] + vo[rng.integers(len(vo))] + (co[rng.integers(len(co))] if i == syllables - 1 else "")
+                        for i in range(syllables)).capitalize()
+            if w not in _RESERVED:
+                return w
 
     def given(self, pid: int) -> str:
         key = ("g", pid)
